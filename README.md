@@ -27,7 +27,7 @@
 Clone the repository:
 
 ```bash
-git clone https://github.com/StartDust/AstroMonitor.git
+git clone https://github.com/dhruvhaldar/AstroMonitor.git
 cd AstroMonitor
 ```
 
