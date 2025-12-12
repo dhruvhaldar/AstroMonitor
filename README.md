@@ -45,7 +45,7 @@ You should see output indicating packet processing and any triggered alerts:
 Starting Astro Monitor...
 Processing packet 1... Parsed: Power - PowerData { voltage: 28.0, current: 2.5, battery_level: 90.0 }
 Processing packet 2... Parsed: Thermal - ThermalData { temp_celsius: 85.5 }
-*** ALERT: [Warning] High Temperature Detected: 85.5°C (Time: 1627849210) ***
+*** ALERT: [Warning] High Temperature: 85.50C (Threshold: 80.00C) (Time: 1627849210) ***
 ...
 ```
 

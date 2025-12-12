@@ -79,18 +79,5 @@ fn generate_simulated_packets() -> Vec<Vec<u8>> {
     p4.extend_from_slice(&(15.0f64).to_be_bytes()); // Battery < 20 (Threshold)
     packets.push(p4);
 
-    // 5. Corrupt Packet (Short)
-    let mut p5 = Vec::new();
-    p5.extend_from_slice(&(1627849240u64).to_be_bytes());
-    p5.push(0);
-    packets.push(p5);
-
-    // 6. Unknown Subsystem
-    let mut p6 = Vec::new();
-    p6.extend_from_slice(&(1627849250u64).to_be_bytes());
-    p6.push(99); // Unknown
-    p6.extend_from_slice(&(0u16).to_be_bytes());
-    packets.push(p6);
-
     packets
 }
