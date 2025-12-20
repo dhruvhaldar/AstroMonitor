@@ -83,19 +83,25 @@ impl eframe::App for AstroMonitorApp {
                 // Logs Column
                 columns[0].vertical(|ui| {
                     ui.heading("System Logs");
-                    egui::ScrollArea::vertical().stick_to_bottom(true).show(ui, |ui| {
-                        for log in &self.logs {
-                            ui.label(log);
-                        }
-                    });
+                    egui::ScrollArea::vertical()
+                        .id_salt("logs_scroll")
+                        .stick_to_bottom(true)
+                        .show(ui, |ui| {
+                            for log in &self.logs {
+                                ui.label(log);
+                            }
+                        });
                 });
 
                 // Alerts Column
                 columns[1].vertical(|ui| {
                     ui.heading("Active Alerts");
-                    egui::ScrollArea::vertical().stick_to_bottom(true).show(ui, |ui| {
-                        for alert in &self.alerts {
-                            let text = format!("[{:?}] {} (Time: {})", alert.level, alert.message, alert.timestamp);
+                    egui::ScrollArea::vertical()
+                        .id_salt("alerts_scroll")
+                        .stick_to_bottom(true)
+                        .show(ui, |ui| {
+                            for alert in &self.alerts {
+                                let text = format!("[{:?}] {} (Time: {})", alert.level, alert.message, alert.timestamp);
                             let color = match alert.level {
                                 AlertLevel::Critical => egui::Color32::RED,
                                 AlertLevel::Warning => egui::Color32::YELLOW,

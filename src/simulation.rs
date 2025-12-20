@@ -23,7 +23,7 @@ pub fn generate_simulated_packets() -> Vec<Vec<u8>> {
     let mut p3 = Vec::new();
     p3.extend_from_slice(&(1627849220u64).to_be_bytes());
     p3.push(3); // Subsystem: StarTracker
-    p3.extend_from_slice(&(0u16).to_be_bytes()); // Len
+    p3.extend_from_slice(&(31u16).to_be_bytes()); // Len
     p3.extend_from_slice(&(12.5f64).to_be_bytes()); // RA
     p3.extend_from_slice(&(45.0f64).to_be_bytes()); // Dec
     p3.extend_from_slice(&(0.95f64).to_be_bytes()); // Confidence
