@@ -9,6 +9,9 @@ The system is designed to handle multiple spacecraft subsystems:
 - **Power System** (Voltage, Current, Battery)
 - **Thermal System** (Temperature)
 - **Star Tracker** (Navigation/Attitude determination)
+- **AOCS** (Attitude & Orbit Control System)
+- **Propulsion** (Fuel, Pressure, Engine Status)
+- **Science** (Instrument Data)
 
 ## 2. System Architecture & Workflow
 
@@ -49,7 +52,7 @@ The envelope containing all telemetry data.
 | Variable Name | Type | Description |
 | :--- | :--- | :--- |
 | `timestamp` | `u64` | Unix timestamp of when the packet was generated. |
-| `subsystem` | `enum Subsystem` | Identifies the source system (`Power`, `Thermal`, `StarTracker`). |
+| `subsystem` | `enum Subsystem` | Identifies the source system (`Power`, `Thermal`, `StarTracker`, `Aocs`, `Propulsion`, `Science`). |
 | `payload` | `enum TelemetryPayload` | The actual sensor data specific to the subsystem. |
 
 ### 3.2 Subsystem Payloads (`src/models.rs`)
@@ -79,12 +82,43 @@ Optical navigation sensor data.
 | `confidence` | `f64` | 0.0 - 1.0 | Quality/certainty of the star match (1.0 = 100%). |
 | `target_id` | `Option<String>` | Text | Name of the identified star (e.g., "Sirius"). |
 
+#### **AOCS (`AocsData`)**
+
+Attitude and Orbit Control System data.
+| Variable Name | Type | Unit | Description |
+| :--- | :--- | :--- | :--- |
+| `mode` | `enum AocsMode` | N/A | Operational mode (`Safe`, `Pointing`, `Detumbling`). |
+| `quaternion` | `[f64; 4]` | N/A | Attitude quaternion (x, y, z, w). |
+| `angular_velocity` | `[f64; 3]` | rad/s | Rotation rate vector (x, y, z). |
+
+#### **Propulsion (`PropulsionData`)**
+
+Engine and fuel status.
+| Variable Name | Type | Unit | Description |
+| :--- | :--- | :--- | :--- |
+| `fuel_level` | `f64` | Percent (%) | Remaining fuel percentage. |
+| `pressure` | `f64` | Bar | Tank pressure. |
+| `engine_status` | `enum EngineStatus` | N/A | Engine state (`Off`, `On`). |
+
+#### **Science (`ScienceData`)**
+
+Payload data from scientific instruments.
+| Variable Name | Type | Unit | Description |
+| :--- | :--- | :--- | :--- |
+| `instrument_id` | `String` | Text | Identifier of the instrument. |
+| `wavelength` | `f64` | nm | Observation wavelength. |
+| `exposure_time` | `u32` | ms | Exposure duration. |
+| `data_size` | `u64` | Bytes | Size of the captured data packet. |
+
 ### 3.3 Monitoring Configuration (`Monitor`)
 
 Variables used to determine system health state. defaults are defined in `src/monitor.rs`.
 
-| Variable Name         | Default Value | Condition for Alert    | Alert Level  |
-| :-------------------- | :------------ | :--------------------- | :----------- |
-| `min_battery_level`   | `20.0` (%)    | `battery_level < 20.0` | **Critical** |
-| `max_temp_celsius`    | `80.0` (C)    | `temp_celsius > 80.0`  | **Warning**  |
-| `min_star_confidence` | `0.8` (80%)   | `confidence < 0.8`     | **Info**     |
+| Variable Name          | Default Value       | Condition for Alert                 | Alert Level  |
+| :--------------------- | :------------------ | :---------------------------------- | :----------- |
+| `min_battery_level`    | `20.0` (%)          | `battery_level < 20.0`              | **Critical** |
+| `max_temp_celsius`     | `80.0` (C)          | `temp_celsius > 80.0`               | **Warning**  |
+| `min_star_confidence`  | `0.8` (80%)         | `confidence < 0.8`                  | **Info**     |
+| `max_angular_velocity` | `1.0` (rad/s)       | `magnitude(angular_velocity) > 1.0` | **Critical** |
+| `min_fuel_level`       | `10.0` (%)          | `fuel_level < 10.0`                 | **Critical** |
+| `max_data_size`        | `1,000,000` (Bytes) | `data_size > 1,000,000`             | **Warning**  |
