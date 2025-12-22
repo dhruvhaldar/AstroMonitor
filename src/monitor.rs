@@ -20,9 +20,6 @@ pub struct Monitor {
     pub min_battery_level: f64,
     pub max_temp_celsius: f64,
     pub min_star_confidence: f64,
-    pub max_angular_velocity: f64,
-    pub min_fuel_level: f64,
-    pub max_data_size: u64,
 }
 
 impl Default for Monitor {
@@ -31,29 +28,16 @@ impl Default for Monitor {
             min_battery_level: 20.0,
             max_temp_celsius: 80.0,
             min_star_confidence: 0.8,
-            max_angular_velocity: 1.0, // rad/s (arbitrary threshold)
-            min_fuel_level: 10.0,      // %
-            max_data_size: 1_000_000,  // 1 MB
         }
     }
 }
 
 impl Monitor {
-    pub fn new(
-        min_battery_level: f64,
-        max_temp_celsius: f64,
-        min_star_confidence: f64,
-        max_angular_velocity: f64,
-        min_fuel_level: f64,
-        max_data_size: u64,
-    ) -> Self {
+    pub fn new(min_battery_level: f64, max_temp_celsius: f64, min_star_confidence: f64) -> Self {
         Self {
             min_battery_level,
             max_temp_celsius,
             min_star_confidence,
-            max_angular_velocity,
-            min_fuel_level,
-            max_data_size,
         }
     }
 
@@ -90,47 +74,6 @@ impl Monitor {
                         message: format!(
                             "Low Star Confidence: {:.2} (Threshold: {:.2})",
                             data.confidence, self.min_star_confidence
-                        ),
-                        timestamp: packet.timestamp,
-                    });
-                }
-            }
-            TelemetryPayload::Aocs(data) => {
-                // Check magnitude of angular velocity
-                let magnitude = (data.angular_velocity[0].powi(2)
-                    + data.angular_velocity[1].powi(2)
-                    + data.angular_velocity[2].powi(2))
-                .sqrt();
-                if magnitude > self.max_angular_velocity {
-                    return Some(Alert {
-                        level: AlertLevel::Critical,
-                        message: format!(
-                            "High Angular Velocity: {:.2} (Threshold: {:.2})",
-                            magnitude, self.max_angular_velocity
-                        ),
-                        timestamp: packet.timestamp,
-                    });
-                }
-            }
-            TelemetryPayload::Propulsion(data) => {
-                if data.fuel_level < self.min_fuel_level {
-                    return Some(Alert {
-                        level: AlertLevel::Critical,
-                        message: format!(
-                            "Low Fuel Level: {:.2}% (Threshold: {:.2}%)",
-                            data.fuel_level, self.min_fuel_level
-                        ),
-                        timestamp: packet.timestamp,
-                    });
-                }
-            }
-            TelemetryPayload::Science(data) => {
-                if data.data_size > self.max_data_size {
-                    return Some(Alert {
-                        level: AlertLevel::Warning,
-                        message: format!(
-                            "Large Data Size: {} bytes (Threshold: {} bytes)",
-                            data.data_size, self.max_data_size
                         ),
                         timestamp: packet.timestamp,
                     });

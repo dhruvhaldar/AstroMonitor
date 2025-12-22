@@ -6,43 +6,6 @@ pub enum Subsystem {
     Thermal,
     Aocs, // Attitude and Orbit Control System
     StarTracker,
-    Propulsion,
-    Science,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum AocsMode {
-    Safe,
-    Pointing,
-    Detumbling,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct AocsData {
-    pub mode: AocsMode,
-    pub quaternion: [f64; 4],       // x, y, z, w
-    pub angular_velocity: [f64; 3], // x, y, z
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum EngineStatus {
-    Off,
-    On,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct PropulsionData {
-    pub fuel_level: f64, // Percentage
-    pub pressure: f64,   // Bar
-    pub engine_status: EngineStatus,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ScienceData {
-    pub instrument_id: String,
-    pub wavelength: f64,    // nm
-    pub exposure_time: u32, // ms
-    pub data_size: u64,     // bytes
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -74,10 +37,7 @@ pub struct StarTrackerReading {
 pub enum TelemetryPayload {
     Power(PowerData),
     Thermal(ThermalData),
-    Aocs(AocsData),
     StarTracker(StarTrackerReading),
-    Propulsion(PropulsionData),
-    Science(ScienceData),
     Unknown,
 }
 
