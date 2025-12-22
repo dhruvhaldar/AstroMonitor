@@ -79,5 +79,45 @@ fn generate_simulated_packets() -> Vec<Vec<u8>> {
     p4.extend_from_slice(&(15.0f64).to_be_bytes()); // Battery < 20 (Threshold)
     packets.push(p4);
 
+    // 5. AOCS Packet (Tumbling/High Angular Velocity)
+    let mut p5 = Vec::new();
+    p5.extend_from_slice(&(1627849240u64).to_be_bytes());
+    p5.push(2); // Subsystem: Aocs
+    p5.extend_from_slice(&(57u16).to_be_bytes());
+    p5.push(2); // Mode: Detumbling
+    // Quaternion
+    p5.extend_from_slice(&(0.0f64).to_be_bytes());
+    p5.extend_from_slice(&(0.0f64).to_be_bytes());
+    p5.extend_from_slice(&(0.0f64).to_be_bytes());
+    p5.extend_from_slice(&(1.0f64).to_be_bytes());
+    // Angular Velocity
+    p5.extend_from_slice(&(0.8f64).to_be_bytes());
+    p5.extend_from_slice(&(0.8f64).to_be_bytes());
+    p5.extend_from_slice(&(0.2f64).to_be_bytes()); // Magnitude > 1.0 (Threshold)
+    packets.push(p5);
+
+    // 6. Propulsion Packet (Low Fuel)
+    let mut p6 = Vec::new();
+    p6.extend_from_slice(&(1627849250u64).to_be_bytes());
+    p6.push(4); // Subsystem: Propulsion
+    p6.extend_from_slice(&(17u16).to_be_bytes());
+    p6.extend_from_slice(&(5.0f64).to_be_bytes()); // Fuel: 5.0% < 10.0 (Threshold)
+    p6.extend_from_slice(&(200.0f64).to_be_bytes()); // Pressure
+    p6.push(1); // Status: On
+    packets.push(p6);
+
+    // 7. Science Packet (Large Data)
+    let mut p7 = Vec::new();
+    p7.extend_from_slice(&(1627849260u64).to_be_bytes());
+    p7.push(5); // Subsystem: Science
+    p7.extend_from_slice(&(21u16).to_be_bytes());
+    p7.extend_from_slice(&(500.0f64).to_be_bytes()); // Wavelength
+    p7.extend_from_slice(&(1000u32).to_be_bytes()); // Exposure
+    p7.extend_from_slice(&(2_000_000u64).to_be_bytes()); // Data Size: 2MB > 1MB (Threshold)
+    let instrument = "Spectrometer-A";
+    p7.push(instrument.len() as u8);
+    p7.extend_from_slice(instrument.as_bytes());
+    packets.push(p7);
+
     packets
 }
