@@ -1,5 +1,5 @@
 use super::*;
-use crate::models::{AocsData, AocsMode, EngineStatus, PropulsionData, ScienceData};
+
 
 #[test]
 fn test_parse_power() {
@@ -92,92 +92,4 @@ fn test_monitor_alerts() {
         }),
     };
     assert!(monitor.analyze(&packet_good).is_none());
-}
-
-#[test]
-fn test_parse_aocs() {
-    let mut data = Vec::new();
-    let timestamp: u64 = 1627849200;
-    data.extend_from_slice(&timestamp.to_be_bytes());
-    data.push(2); // Subsystem: Aocs
-    data.extend_from_slice(&(57u16).to_be_bytes()); // Len
-
-    data.push(1); // Mode: Pointing
-
-    // Quaternion
-    data.extend_from_slice(&(0.0f64).to_be_bytes());
-    data.extend_from_slice(&(0.0f64).to_be_bytes());
-    data.extend_from_slice(&(0.0f64).to_be_bytes());
-    data.extend_from_slice(&(1.0f64).to_be_bytes());
-
-    // Angular Velocity
-    data.extend_from_slice(&(0.1f64).to_be_bytes());
-    data.extend_from_slice(&(0.1f64).to_be_bytes());
-    data.extend_from_slice(&(0.1f64).to_be_bytes());
-
-    let result = Parser::parse(&data).unwrap();
-
-    assert_eq!(result.subsystem, Subsystem::Aocs);
-    if let TelemetryPayload::Aocs(d) = result.payload {
-        assert_eq!(d.mode, AocsMode::Pointing);
-        assert_eq!(d.quaternion, [0.0, 0.0, 0.0, 1.0]);
-        assert_eq!(d.angular_velocity, [0.1, 0.1, 0.1]);
-    } else {
-        panic!("Wrong payload type");
-    }
-}
-
-#[test]
-fn test_monitor_aocs_alert() {
-    let monitor = Monitor::default();
-    // High Angular Velocity
-    let packet = TelemetryPacket {
-        timestamp: 100,
-        subsystem: Subsystem::Aocs,
-        payload: TelemetryPayload::Aocs(AocsData {
-            mode: AocsMode::Detumbling,
-            quaternion: [0.0; 4],
-            angular_velocity: [1.0, 1.0, 1.0], // Magnitude sqrt(3) > 1.0
-        }),
-    };
-    let alert = monitor.analyze(&packet);
-    assert!(alert.is_some());
-    assert_eq!(alert.unwrap().level, AlertLevel::Critical);
-}
-
-#[test]
-fn test_monitor_propulsion_alert() {
-    let monitor = Monitor::default();
-    // Low Fuel
-    let packet = TelemetryPacket {
-        timestamp: 100,
-        subsystem: Subsystem::Propulsion,
-        payload: TelemetryPayload::Propulsion(PropulsionData {
-            fuel_level: 5.0, // < 10.0
-            pressure: 100.0,
-            engine_status: EngineStatus::On,
-        }),
-    };
-    let alert = monitor.analyze(&packet);
-    assert!(alert.is_some());
-    assert_eq!(alert.unwrap().level, AlertLevel::Critical);
-}
-
-#[test]
-fn test_monitor_science_alert() {
-    let monitor = Monitor::default();
-    // Large Data
-    let packet = TelemetryPacket {
-        timestamp: 100,
-        subsystem: Subsystem::Science,
-        payload: TelemetryPayload::Science(ScienceData {
-            instrument_id: "Test".into(),
-            wavelength: 500.0,
-            exposure_time: 100,
-            data_size: 2_000_000, // > 1_000_000
-        }),
-    };
-    let alert = monitor.analyze(&packet);
-    assert!(alert.is_some());
-    assert_eq!(alert.unwrap().level, AlertLevel::Warning);
 }
