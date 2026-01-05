@@ -1,4 +1,4 @@
-use crate::{Monitor, Parser, Alert, AlertLevel, simulation};
+use crate::{Monitor, Parser, Alert, AlertLevel, simulation, TelemetryPacket, ParserError};
 use eframe::egui;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -62,8 +62,10 @@ impl eframe::App for AstroMonitorApp {
         // Simulation Logic
         if !self.paused && self.packet_index < self.packets.len() {
             if self.last_update.elapsed() >= self.simulation_speed {
-                let packet_data = self.packets[self.packet_index].clone();
-                self.process_packet(&packet_data, Some(self.packet_index + 1));
+                // Bolt Optimization: Parse packet first to avoid cloning the packet data vector.
+                // We borrow `self.packets` (immutable) then `self` (mutable) separately.
+                let result = Parser::parse(&self.packets[self.packet_index]);
+                self.process_packet_result(result, Some(self.packet_index + 1));
                 self.packet_index += 1;
                 self.last_update = Instant::now();
             }
@@ -173,22 +175,24 @@ impl eframe::App for AstroMonitorApp {
 
             if ui.button("Inject Packet").clicked() {
                 let packet = self.create_manual_packet();
-                self.process_packet(&packet, None);
+                let result = Parser::parse(&packet);
+                self.process_packet_result(result, None);
             }
         });
     }
 }
 
 impl AstroMonitorApp {
-    fn process_packet(&mut self, packet_data: &[u8], index: Option<usize>) {
-         let prefix = if let Some(idx) = index {
+    // Bolt Optimization: Accepts parsed result to avoid borrowing conflicts and unnecessary cloning
+    fn process_packet_result(&mut self, result: Result<TelemetryPacket, ParserError>, index: Option<usize>) {
+        let prefix = if let Some(idx) = index {
             format!("Processing packet {}...", idx)
         } else {
             "Processing manual packet...".to_string()
         };
         self.logs.push(prefix);
 
-        match Parser::parse(packet_data) {
+        match result {
             Ok(packet) => {
                 self.logs.push(format!("Parsed: {:?} - {:?}", packet.subsystem, packet.payload));
 
