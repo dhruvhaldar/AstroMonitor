@@ -76,10 +76,16 @@ impl eframe::App for AstroMonitorApp {
 
             // Control Bar
             ui.horizontal(|ui| {
-                if ui.button(if self.paused { "Resume" } else { "Pause" }).clicked() {
+                if ui.button(if self.paused { "Resume" } else { "Pause" })
+                    .on_hover_text("Pause or resume the simulation updates.")
+                    .clicked()
+                {
                     self.paused = !self.paused;
                 }
-                if ui.button("Restart Simulation").clicked() {
+                if ui.button("Restart Simulation")
+                    .on_hover_text("⚠ Clears all logs, alerts, and restarts the simulation.")
+                    .clicked()
+                {
                     self.packet_index = 0;
                     self.logs.clear();
                     self.alerts.clear();
@@ -141,26 +147,26 @@ impl eframe::App for AstroMonitorApp {
             match self.input_subsystem {
                 InputSubsystem::Power => {
                     ui.horizontal(|ui| {
-                        ui.label("Voltage (V):");
-                        ui.add(egui::DragValue::new(&mut self.input_voltage).speed(0.1));
-                        ui.label("Current (A):");
-                        ui.add(egui::DragValue::new(&mut self.input_current).speed(0.1));
-                        ui.label("Battery (%):");
-                        ui.add(egui::DragValue::new(&mut self.input_battery).speed(0.1).range(0.0..=100.0));
+                        ui.label("Voltage:");
+                        ui.add(egui::DragValue::new(&mut self.input_voltage).speed(0.1).suffix(" V"));
+                        ui.label("Current:");
+                        ui.add(egui::DragValue::new(&mut self.input_current).speed(0.1).suffix(" A"));
+                        ui.label("Battery:");
+                        ui.add(egui::DragValue::new(&mut self.input_battery).speed(0.1).range(0.0..=100.0).suffix(" %"));
                     });
                 }
                 InputSubsystem::Thermal => {
                     ui.horizontal(|ui| {
-                        ui.label("Temperature (C):");
-                        ui.add(egui::DragValue::new(&mut self.input_temp).speed(0.5));
+                        ui.label("Temperature:");
+                        ui.add(egui::DragValue::new(&mut self.input_temp).speed(0.5).suffix(" C"));
                     });
                 }
                 InputSubsystem::StarTracker => {
                      ui.horizontal(|ui| {
                         ui.label("RA:");
-                        ui.add(egui::DragValue::new(&mut self.input_ra).speed(0.1));
+                        ui.add(egui::DragValue::new(&mut self.input_ra).speed(0.1).suffix("°"));
                         ui.label("Dec:");
-                        ui.add(egui::DragValue::new(&mut self.input_dec).speed(0.1));
+                        ui.add(egui::DragValue::new(&mut self.input_dec).speed(0.1).suffix("°"));
                     });
                      ui.horizontal(|ui| {
                         ui.label("Confidence:");
