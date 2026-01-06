@@ -103,7 +103,14 @@ impl eframe::App for AstroMonitorApp {
             ui.columns(2, |columns| {
                 // Logs Column
                 columns[0].vertical(|ui| {
-                    ui.heading("System Logs");
+                    ui.horizontal(|ui| {
+                        ui.heading("System Logs");
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if ui.button("🗑").on_hover_text("Clear logs").clicked() {
+                                self.logs.clear();
+                            }
+                        });
+                    });
                     egui::ScrollArea::vertical()
                         .id_salt("logs_scroll")
                         .max_height(300.0)
@@ -117,7 +124,14 @@ impl eframe::App for AstroMonitorApp {
 
                 // Alerts Column
                 columns[1].vertical(|ui| {
-                    ui.heading("Active Alerts");
+                    ui.horizontal(|ui| {
+                        ui.heading("Active Alerts");
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if ui.button("🗑").on_hover_text("Clear alerts").clicked() {
+                                self.alerts.clear();
+                            }
+                        });
+                    });
                     egui::ScrollArea::vertical()
                         .id_salt("alerts_scroll")
                         .max_height(300.0)
