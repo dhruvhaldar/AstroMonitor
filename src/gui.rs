@@ -1,6 +1,9 @@
 use crate::{Monitor, Parser, Alert, AlertLevel, simulation, TelemetryPacket, ParserError};
 use eframe::egui;
+use std::collections::VecDeque;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+const MAX_LOGS: usize = 1000;
 
 #[derive(PartialEq)]
 enum InputSubsystem {
@@ -13,7 +16,7 @@ pub struct AstroMonitorApp {
     monitor: Monitor,
     packets: Vec<Vec<u8>>,
     packet_index: usize,
-    logs: Vec<String>,
+    logs: VecDeque<String>,
     alerts: Vec<Alert>,
     last_update: Instant,
     simulation_speed: Duration,
@@ -37,7 +40,7 @@ impl Default for AstroMonitorApp {
             monitor: Monitor::default(),
             packets: simulation::generate_simulated_packets(),
             packet_index: 0,
-            logs: Vec::new(),
+            logs: VecDeque::new(),
             alerts: Vec::new(),
             last_update: Instant::now(),
             simulation_speed: Duration::from_millis(1000),
@@ -203,6 +206,13 @@ impl eframe::App for AstroMonitorApp {
 }
 
 impl AstroMonitorApp {
+    fn add_log(&mut self, message: String) {
+        if self.logs.len() >= MAX_LOGS {
+            self.logs.pop_front();
+        }
+        self.logs.push_back(message);
+    }
+
     // Bolt Optimization: Accepts parsed result to avoid borrowing conflicts and unnecessary cloning
     fn process_packet_result(&mut self, result: Result<TelemetryPacket, ParserError>, index: Option<usize>) {
         let prefix = if let Some(idx) = index {
@@ -210,14 +220,14 @@ impl AstroMonitorApp {
         } else {
             "Processing manual packet...".to_string()
         };
-        self.logs.push(prefix);
+        self.add_log(prefix);
 
         match result {
             Ok(packet) => {
-                self.logs.push(format!("Parsed: {:?} - {:?}", packet.subsystem, packet.payload));
+                self.add_log(format!("Parsed: {:?} - {:?}", packet.subsystem, packet.payload));
 
                 if let Some(alert) = self.monitor.analyze(&packet) {
-                    self.logs.push(format!(
+                    self.add_log(format!(
                         "*** ALERT: [{:?}] {} ***",
                         alert.level, alert.message
                     ));
@@ -225,7 +235,7 @@ impl AstroMonitorApp {
                 }
             }
             Err(e) => {
-                self.logs.push(format!("Error parsing packet: {}", e));
+                self.add_log(format!("Error parsing packet: {}", e));
             }
         }
     }
