@@ -19,7 +19,7 @@ pub struct AstroMonitorApp {
     logs: VecDeque<String>,
     alerts: Vec<Alert>,
     last_update: Instant,
-    simulation_speed: Duration,
+    simulation_delay_ms: u64,
     paused: bool,
 
     // Input fields
@@ -43,7 +43,7 @@ impl Default for AstroMonitorApp {
             logs: VecDeque::new(),
             alerts: Vec::new(),
             last_update: Instant::now(),
-            simulation_speed: Duration::from_millis(1000),
+            simulation_delay_ms: 1000,
             paused: false,
 
             // Default input values
@@ -64,7 +64,7 @@ impl eframe::App for AstroMonitorApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Simulation Logic
         if !self.paused && self.packet_index < self.packets.len() {
-            if self.last_update.elapsed() >= self.simulation_speed {
+            if self.last_update.elapsed() >= Duration::from_millis(self.simulation_delay_ms) {
                 // Bolt Optimization: Parse packet first to avoid cloning the packet data vector.
                 // We borrow `self.packets` (immutable) then `self` (mutable) separately.
                 let result = Parser::parse(&self.packets[self.packet_index]);
@@ -97,6 +97,9 @@ impl eframe::App for AstroMonitorApp {
                     self.last_update = Instant::now();
                     self.paused = false;
                 }
+                ui.add(egui::Slider::new(&mut self.simulation_delay_ms, 100..=2000).text("Delay (ms)"))
+                    .on_hover_text("Adjust simulation speed (delay between packets in milliseconds)");
+
                 ui.label(format!("Progress: {}/{}", self.packet_index, self.packets.len()));
             });
 
