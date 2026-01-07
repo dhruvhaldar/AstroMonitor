@@ -102,6 +102,10 @@ impl eframe::App for AstroMonitorApp {
 
             ui.separator();
 
+            // Calculate row height for virtualization
+            let text_style = egui::TextStyle::Body;
+            let row_height = ui.text_style_height(&text_style);
+
             // Main Columns
             ui.columns(2, |columns| {
                 // Logs Column
@@ -114,13 +118,16 @@ impl eframe::App for AstroMonitorApp {
                             }
                         });
                     });
-                    egui::ScrollArea::vertical()
+
+                    // Bolt Optimization: Use virtualization for logs
+                    egui::ScrollArea::both()
                         .id_salt("logs_scroll")
                         .max_height(300.0)
                         .stick_to_bottom(true)
-                        .show(ui, |ui| {
-                            for log in &self.logs {
-                                ui.label(log);
+                        .show_rows(ui, row_height, self.logs.len(), |ui, row_range| {
+                            for i in row_range {
+                                // Ensure fixed height by disabling wrap/truncating
+                                ui.add(egui::Label::new(&self.logs[i]).truncate());
                             }
                         });
                 });
@@ -135,19 +142,23 @@ impl eframe::App for AstroMonitorApp {
                             }
                         });
                     });
-                    egui::ScrollArea::vertical()
+
+                    // Bolt Optimization: Use virtualization for alerts
+                    egui::ScrollArea::both()
                         .id_salt("alerts_scroll")
                         .max_height(300.0)
                         .stick_to_bottom(true)
-                        .show(ui, |ui| {
-                            for alert in &self.alerts {
+                        .show_rows(ui, row_height, self.alerts.len(), |ui, row_range| {
+                            for i in row_range {
+                                let alert = &self.alerts[i];
                                 let text = format!("[{:?}] {} (Time: {})", alert.level, alert.message, alert.timestamp);
                                 let color = match alert.level {
                                     AlertLevel::Critical => egui::Color32::RED,
                                     AlertLevel::Warning => egui::Color32::YELLOW,
                                     AlertLevel::Info => egui::Color32::LIGHT_BLUE,
                                 };
-                                ui.colored_label(color, text);
+                                // Ensure fixed height by disabling wrap/truncating
+                                ui.add(egui::Label::new(egui::RichText::new(text).color(color)).truncate());
                             }
                         });
                 });
