@@ -205,7 +205,7 @@ impl eframe::App for AstroMonitorApp {
                         ui.label("Confidence:");
                         ui.add(egui::DragValue::new(&mut self.input_confidence).speed(0.01).range(0.0..=1.0));
                         ui.label("Target:");
-                        ui.text_edit_singleline(&mut self.input_target);
+                        ui.add(egui::TextEdit::singleline(&mut self.input_target).hint_text("e.g. Sirius"));
                     });
                 }
             }
