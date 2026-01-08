@@ -11,7 +11,7 @@ pub enum ParserError {
     #[error("Invalid subsystem ID: {0}")]
     InvalidSubsystem(u8),
     #[error("UTF-8 error")]
-    Utf8Error(#[from] std::string::FromUtf8Error),
+    Utf8Error(#[from] std::str::Utf8Error),
     #[error("Unknown error")]
     Unknown,
 }
@@ -111,7 +111,8 @@ impl Parser {
                 }
                 let id_bytes = &data[offset..offset + id_len];
                 let target_id = if id_len > 0 {
-                    Some(String::from_utf8(id_bytes.to_vec())?)
+                    // Bolt Optimization: Validate UTF-8 on slice directly to avoid allocating Vec<u8>
+                    Some(std::str::from_utf8(id_bytes)?.to_string())
                 } else {
                     None
                 };
