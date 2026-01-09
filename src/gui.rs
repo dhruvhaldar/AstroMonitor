@@ -64,7 +64,9 @@ impl eframe::App for AstroMonitorApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Simulation Logic
         if !self.paused && self.packet_index < self.packets.len() {
-            if self.last_update.elapsed() >= Duration::from_millis(self.simulation_delay_ms) {
+            let delay = Duration::from_millis(self.simulation_delay_ms);
+
+            if self.last_update.elapsed() >= delay {
                 // Bolt Optimization: Parse packet first to avoid cloning the packet data vector.
                 // We borrow `self.packets` (immutable) then `self` (mutable) separately.
                 let result = Parser::parse(&self.packets[self.packet_index]);
@@ -72,7 +74,11 @@ impl eframe::App for AstroMonitorApp {
                 self.packet_index += 1;
                 self.last_update = Instant::now();
             }
-            ctx.request_repaint();
+
+            // Bolt Optimization: Prevent busy loop by scheduling repaint only when needed
+            // Calculate time until next packet should be processed
+            let time_to_next = delay.saturating_sub(self.last_update.elapsed());
+            ctx.request_repaint_after(time_to_next);
         }
 
         // GUI Layout
