@@ -100,7 +100,9 @@ impl eframe::App for AstroMonitorApp {
                 ui.add(egui::Slider::new(&mut self.simulation_delay_ms, 100..=2000).text("Delay (ms)"))
                     .on_hover_text("Adjust simulation speed (delay between packets in milliseconds)");
 
-                ui.label(format!("Progress: {}/{}", self.packet_index, self.packets.len()));
+                let progress = self.packet_index as f32 / self.packets.len() as f32;
+                ui.add(egui::ProgressBar::new(progress)
+                    .text(format!("{}/{}", self.packet_index, self.packets.len())));
             });
 
             ui.separator();
@@ -123,16 +125,23 @@ impl eframe::App for AstroMonitorApp {
                     });
 
                     // Bolt Optimization: Use virtualization for logs
-                    egui::ScrollArea::both()
-                        .id_salt("logs_scroll")
-                        .max_height(300.0)
-                        .stick_to_bottom(true)
-                        .show_rows(ui, row_height, self.logs.len(), |ui, row_range| {
-                            for i in row_range {
-                                // Ensure fixed height by disabling wrap/truncating
-                                ui.add(egui::Label::new(&self.logs[i]).truncate());
-                            }
+                    if self.logs.is_empty() {
+                        ui.vertical_centered(|ui| {
+                            ui.add_space(20.0);
+                            ui.label(egui::RichText::new("No system logs").italics().weak());
                         });
+                    } else {
+                        egui::ScrollArea::both()
+                            .id_salt("logs_scroll")
+                            .max_height(300.0)
+                            .stick_to_bottom(true)
+                            .show_rows(ui, row_height, self.logs.len(), |ui, row_range| {
+                                for i in row_range {
+                                    // Ensure fixed height by disabling wrap/truncating
+                                    ui.add(egui::Label::new(&self.logs[i]).truncate());
+                                }
+                            });
+                    }
                 });
 
                 // Alerts Column
@@ -147,23 +156,30 @@ impl eframe::App for AstroMonitorApp {
                     });
 
                     // Bolt Optimization: Use virtualization for alerts
-                    egui::ScrollArea::both()
-                        .id_salt("alerts_scroll")
-                        .max_height(300.0)
-                        .stick_to_bottom(true)
-                        .show_rows(ui, row_height, self.alerts.len(), |ui, row_range| {
-                            for i in row_range {
-                                let alert = &self.alerts[i];
-                                let text = format!("[{:?}] {} (Time: {})", alert.level, alert.message, alert.timestamp);
-                                let color = match alert.level {
-                                    AlertLevel::Critical => egui::Color32::RED,
-                                    AlertLevel::Warning => egui::Color32::YELLOW,
-                                    AlertLevel::Info => egui::Color32::LIGHT_BLUE,
-                                };
-                                // Ensure fixed height by disabling wrap/truncating
-                                ui.add(egui::Label::new(egui::RichText::new(text).color(color)).truncate());
-                            }
+                    if self.alerts.is_empty() {
+                        ui.vertical_centered(|ui| {
+                            ui.add_space(20.0);
+                            ui.label(egui::RichText::new("No active alerts").italics().weak());
                         });
+                    } else {
+                        egui::ScrollArea::both()
+                            .id_salt("alerts_scroll")
+                            .max_height(300.0)
+                            .stick_to_bottom(true)
+                            .show_rows(ui, row_height, self.alerts.len(), |ui, row_range| {
+                                for i in row_range {
+                                    let alert = &self.alerts[i];
+                                    let text = format!("[{:?}] {} (Time: {})", alert.level, alert.message, alert.timestamp);
+                                    let color = match alert.level {
+                                        AlertLevel::Critical => egui::Color32::RED,
+                                        AlertLevel::Warning => egui::Color32::YELLOW,
+                                        AlertLevel::Info => egui::Color32::LIGHT_BLUE,
+                                    };
+                                    // Ensure fixed height by disabling wrap/truncating
+                                    ui.add(egui::Label::new(egui::RichText::new(text).color(color)).truncate());
+                                }
+                            });
+                    }
                 });
             });
 
