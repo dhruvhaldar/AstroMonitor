@@ -144,7 +144,8 @@ impl eframe::App for AstroMonitorApp {
                             .show_rows(ui, row_height, self.logs.len(), |ui, row_range| {
                                 for i in row_range {
                                     // Ensure fixed height by disabling wrap/truncating
-                                    ui.add(egui::Label::new(&self.logs[i]).truncate());
+                                    ui.add(egui::Label::new(&self.logs[i]).truncate())
+                                        .on_hover_text(&self.logs[i]);
                                 }
                             });
                     }
@@ -182,7 +183,8 @@ impl eframe::App for AstroMonitorApp {
                                         AlertLevel::Info => egui::Color32::LIGHT_BLUE,
                                     };
                                     // Ensure fixed height by disabling wrap/truncating
-                                    ui.add(egui::Label::new(egui::RichText::new(text).color(color)).truncate());
+                                    ui.add(egui::Label::new(egui::RichText::new(text.clone()).color(color)).truncate())
+                                        .on_hover_text(text);
                                 }
                             });
                     }
