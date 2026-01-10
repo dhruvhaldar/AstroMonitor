@@ -17,7 +17,7 @@ pub struct AstroMonitorApp {
     packets: Vec<Vec<u8>>,
     packet_index: usize,
     logs: VecDeque<String>,
-    alerts: Vec<Alert>,
+    alerts: Vec<(Alert, String)>,
     last_update: Instant,
     simulation_delay_ms: u64,
     paused: bool,
@@ -175,8 +175,8 @@ impl eframe::App for AstroMonitorApp {
                             .stick_to_bottom(true)
                             .show_rows(ui, row_height, self.alerts.len(), |ui, row_range| {
                                 for i in row_range {
-                                    let alert = &self.alerts[i];
-                                    let text = format!("[{:?}] {} (Time: {})", alert.level, alert.message, alert.timestamp);
+                                    // Bolt Optimization: Use pre-formatted string to avoid formatting in render loop
+                                    let (alert, text) = &self.alerts[i];
                                     let color = match alert.level {
                                         AlertLevel::Critical => egui::Color32::RED,
                                         AlertLevel::Warning => egui::Color32::YELLOW,
@@ -269,7 +269,9 @@ impl AstroMonitorApp {
                         "*** ALERT: [{:?}] {} ***",
                         alert.level, alert.message
                     ));
-                    self.alerts.push(alert);
+                    // Bolt Optimization: Pre-format display text to avoid allocation in render loop
+                    let display_text = format!("[{:?}] {} (Time: {})", alert.level, alert.message, alert.timestamp);
+                    self.alerts.push((alert, display_text));
                 }
             }
             Err(e) => {
