@@ -182,9 +182,14 @@ impl eframe::App for AstroMonitorApp {
                                         AlertLevel::Warning => egui::Color32::YELLOW,
                                         AlertLevel::Info => egui::Color32::LIGHT_BLUE,
                                     };
+                                    // Bolt Optimization: Override text color in visual style to avoid allocation
+                                    // (RichText::new(text.clone()) would allocate a new String every frame)
+                                    ui.style_mut().visuals.override_text_color = Some(color);
                                     // Ensure fixed height by disabling wrap/truncating
-                                    ui.add(egui::Label::new(egui::RichText::new(text.clone()).color(color)).truncate())
+                                    ui.add(egui::Label::new(text).truncate())
                                         .on_hover_text(text);
+                                    // Reset color for safety (though loop re-sets it)
+                                    ui.style_mut().visuals.override_text_color = None;
                                 }
                             });
                     }
