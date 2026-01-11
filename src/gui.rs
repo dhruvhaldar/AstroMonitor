@@ -88,9 +88,13 @@ impl eframe::App for AstroMonitorApp {
             // Control Bar
             ui.horizontal(|ui| {
                 if ui.button(if self.paused { "Resume" } else { "Pause" })
-                    .on_hover_text("Pause or resume the simulation updates.")
+                    .on_hover_text("Pause or resume the simulation updates. (Space)")
                     .clicked()
                 {
+                    self.paused = !self.paused;
+                }
+                // Handle keyboard shortcut (Space to toggle pause)
+                if ui.input(|i| i.key_pressed(egui::Key::Space)) && !ui.ctx().wants_keyboard_input() {
                     self.paused = !self.paused;
                 }
                 if ui.button("Restart Simulation")
