@@ -9,3 +9,7 @@
 ## 2025-02-24 - Keyboard Shortcuts & Focus Safety
 **Learning:** Global keyboard shortcuts (like Space to pause) significantly improve usability but can conflict with text inputs.
 **Action:** Always wrap global key handlers in `if !ctx.wants_keyboard_input()` to ensure typing in text fields doesn't trigger unintended actions. Update tooltips to announce the shortcut (e.g., "Pause (Space)").
+
+## 2025-02-24 - Anticipatory Tooltips
+**Learning:** Tooltips on selection controls (like radio buttons) can "preview" the consequences of the selection (e.g., which form fields will appear). This reduces clicking around just to see what options are available.
+**Action:** Add `.on_hover_text()` to radio buttons or dropdown items that trigger significant UI layout changes.
