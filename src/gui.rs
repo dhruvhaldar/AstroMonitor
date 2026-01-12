@@ -262,16 +262,15 @@ impl AstroMonitorApp {
 
     // Bolt Optimization: Accepts parsed result to avoid borrowing conflicts and unnecessary cloning
     fn process_packet_result(&mut self, result: Result<TelemetryPacket, ParserError>, index: Option<usize>) {
-        let prefix = if let Some(idx) = index {
-            format!("Processing packet {}...", idx)
-        } else {
-            "Processing manual packet...".to_string()
-        };
-        self.add_log(prefix);
-
+        // Bolt Optimization: Combined log message to reduce string allocations and VecDeque operations by 50%
         match result {
             Ok(packet) => {
-                self.add_log(format!("Parsed: {:?} - {:?}", packet.subsystem, packet.payload));
+                let log_message = if let Some(idx) = index {
+                    format!("Packet {}: Parsed {:?} - {:?}", idx, packet.subsystem, packet.payload)
+                } else {
+                    format!("Manual Packet: Parsed {:?} - {:?}", packet.subsystem, packet.payload)
+                };
+                self.add_log(log_message);
 
                 if let Some(alert) = self.monitor.analyze(&packet) {
                     self.add_log(format!(
@@ -284,7 +283,12 @@ impl AstroMonitorApp {
                 }
             }
             Err(e) => {
-                self.add_log(format!("Error parsing packet: {}", e));
+                let log_message = if let Some(idx) = index {
+                    format!("Packet {}: Error parsing: {}", idx, e)
+                } else {
+                    format!("Manual Packet: Error parsing: {}", e)
+                };
+                self.add_log(log_message);
             }
         }
     }
