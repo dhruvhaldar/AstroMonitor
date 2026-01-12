@@ -205,9 +205,12 @@ impl eframe::App for AstroMonitorApp {
             // Manual Input Section
             ui.heading("Manual Packet Injection");
             ui.horizontal(|ui| {
-                ui.radio_value(&mut self.input_subsystem, InputSubsystem::Power, "Power");
-                ui.radio_value(&mut self.input_subsystem, InputSubsystem::Thermal, "Thermal");
-                ui.radio_value(&mut self.input_subsystem, InputSubsystem::StarTracker, "Star Tracker");
+                ui.radio_value(&mut self.input_subsystem, InputSubsystem::Power, "Power")
+                    .on_hover_text("Configure Voltage, Current, and Battery parameters");
+                ui.radio_value(&mut self.input_subsystem, InputSubsystem::Thermal, "Thermal")
+                    .on_hover_text("Configure Temperature sensor parameters");
+                ui.radio_value(&mut self.input_subsystem, InputSubsystem::StarTracker, "Star Tracker")
+                    .on_hover_text("Configure RA, Dec, Confidence, and Target identification");
             });
 
             match self.input_subsystem {
@@ -243,7 +246,10 @@ impl eframe::App for AstroMonitorApp {
                 }
             }
 
-            if ui.button("Inject Packet").clicked() {
+            if ui.button("Inject Packet")
+                .on_hover_text("Construct and process a telemetry packet with the above values")
+                .clicked()
+            {
                 let packet = self.create_manual_packet();
                 let result = Parser::parse(&packet);
                 self.process_packet_result(result, None);
