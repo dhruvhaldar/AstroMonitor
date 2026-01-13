@@ -13,3 +13,7 @@
 ## 2025-02-24 - Anticipatory Tooltips
 **Learning:** Tooltips on selection controls (like radio buttons) can "preview" the consequences of the selection (e.g., which form fields will appear). This reduces clicking around just to see what options are available.
 **Action:** Add `.on_hover_text()` to radio buttons or dropdown items that trigger significant UI layout changes.
+
+## 2025-02-24 - Input Constraints & Self-Documentation
+**Learning:** Explicitly constraining inputs (e.g., `range(0.0..=100.0)`) and documenting those limits in label tooltips makes the interface safer and easier to learn. Users shouldn't have to guess valid ranges.
+**Action:** Always add `.range()` to `DragValue` and `.char_limit()` to `TextEdit` where physical or protocol limits exist. Add `on_hover_text` to the label explaining these limits.

@@ -1,4 +1,4 @@
-use crate::{Monitor, Parser, Alert, AlertLevel, simulation, TelemetryPacket, ParserError};
+use crate::{simulation, Alert, AlertLevel, Monitor, Parser, ParserError, TelemetryPacket};
 use eframe::egui;
 use std::collections::VecDeque;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -87,17 +87,20 @@ impl eframe::App for AstroMonitorApp {
 
             // Control Bar
             ui.horizontal(|ui| {
-                if ui.button(if self.paused { "Resume" } else { "Pause" })
+                if ui
+                    .button(if self.paused { "Resume" } else { "Pause" })
                     .on_hover_text("Pause or resume the simulation updates. (Space)")
                     .clicked()
                 {
                     self.paused = !self.paused;
                 }
                 // Handle keyboard shortcut (Space to toggle pause)
-                if ui.input(|i| i.key_pressed(egui::Key::Space)) && !ui.ctx().wants_keyboard_input() {
+                if ui.input(|i| i.key_pressed(egui::Key::Space)) && !ui.ctx().wants_keyboard_input()
+                {
                     self.paused = !self.paused;
                 }
-                if ui.button("Restart Simulation")
+                if ui
+                    .button("Restart Simulation")
                     .on_hover_text("⚠ Clears all logs, alerts, and restarts the simulation.")
                     .clicked()
                 {
@@ -107,12 +110,17 @@ impl eframe::App for AstroMonitorApp {
                     self.last_update = Instant::now();
                     self.paused = false;
                 }
-                ui.add(egui::Slider::new(&mut self.simulation_delay_ms, 100..=2000).text("Delay (ms)"))
-                    .on_hover_text("Adjust simulation speed (delay between packets in milliseconds)");
+                ui.add(
+                    egui::Slider::new(&mut self.simulation_delay_ms, 100..=2000).text("Delay (ms)"),
+                )
+                .on_hover_text("Adjust simulation speed (delay between packets in milliseconds)");
 
                 let progress = self.packet_index as f32 / self.packets.len() as f32;
-                ui.add(egui::ProgressBar::new(progress)
-                    .text(format!("{}/{}", self.packet_index, self.packets.len())));
+                ui.add(egui::ProgressBar::new(progress).text(format!(
+                    "{}/{}",
+                    self.packet_index,
+                    self.packets.len()
+                )));
             });
 
             ui.separator();
@@ -207,46 +215,96 @@ impl eframe::App for AstroMonitorApp {
             ui.horizontal(|ui| {
                 ui.radio_value(&mut self.input_subsystem, InputSubsystem::Power, "Power")
                     .on_hover_text("Configure Voltage, Current, and Battery parameters");
-                ui.radio_value(&mut self.input_subsystem, InputSubsystem::Thermal, "Thermal")
-                    .on_hover_text("Configure Temperature sensor parameters");
-                ui.radio_value(&mut self.input_subsystem, InputSubsystem::StarTracker, "Star Tracker")
-                    .on_hover_text("Configure RA, Dec, Confidence, and Target identification");
+                ui.radio_value(
+                    &mut self.input_subsystem,
+                    InputSubsystem::Thermal,
+                    "Thermal",
+                )
+                .on_hover_text("Configure Temperature sensor parameters");
+                ui.radio_value(
+                    &mut self.input_subsystem,
+                    InputSubsystem::StarTracker,
+                    "Star Tracker",
+                )
+                .on_hover_text("Configure RA, Dec, Confidence, and Target identification");
             });
 
             match self.input_subsystem {
                 InputSubsystem::Power => {
                     ui.horizontal(|ui| {
-                        ui.label("Voltage:");
-                        ui.add(egui::DragValue::new(&mut self.input_voltage).speed(0.1).suffix(" V"));
-                        ui.label("Current:");
-                        ui.add(egui::DragValue::new(&mut self.input_current).speed(0.1).suffix(" A"));
-                        ui.label("Battery:");
-                        ui.add(egui::DragValue::new(&mut self.input_battery).speed(0.1).range(0.0..=100.0).suffix(" %"));
+                        ui.label("Voltage:").on_hover_text("Range: 0.0 - 120.0 V");
+                        ui.add(
+                            egui::DragValue::new(&mut self.input_voltage)
+                                .speed(0.1)
+                                .range(0.0..=120.0)
+                                .suffix(" V"),
+                        );
+                        ui.label("Current:").on_hover_text("Range: 0.0 - 50.0 A");
+                        ui.add(
+                            egui::DragValue::new(&mut self.input_current)
+                                .speed(0.1)
+                                .range(0.0..=50.0)
+                                .suffix(" A"),
+                        );
+                        ui.label("Battery:").on_hover_text("Range: 0 - 100 %");
+                        ui.add(
+                            egui::DragValue::new(&mut self.input_battery)
+                                .speed(0.1)
+                                .range(0.0..=100.0)
+                                .suffix(" %"),
+                        );
                     });
                 }
                 InputSubsystem::Thermal => {
                     ui.horizontal(|ui| {
-                        ui.label("Temperature:");
-                        ui.add(egui::DragValue::new(&mut self.input_temp).speed(0.5).suffix(" C"));
+                        ui.label("Temperature:")
+                            .on_hover_text("Range: -273.15 - 1000.0 C");
+                        ui.add(
+                            egui::DragValue::new(&mut self.input_temp)
+                                .speed(0.5)
+                                .range(-273.15..=1000.0)
+                                .suffix(" C"),
+                        );
                     });
                 }
                 InputSubsystem::StarTracker => {
-                     ui.horizontal(|ui| {
-                        ui.label("RA:");
-                        ui.add(egui::DragValue::new(&mut self.input_ra).speed(0.1).suffix("°"));
-                        ui.label("Dec:");
-                        ui.add(egui::DragValue::new(&mut self.input_dec).speed(0.1).suffix("°"));
+                    ui.horizontal(|ui| {
+                        ui.label("RA:")
+                            .on_hover_text("Right Ascension (0.0 - 360.0°)");
+                        ui.add(
+                            egui::DragValue::new(&mut self.input_ra)
+                                .speed(0.1)
+                                .range(0.0..=360.0)
+                                .suffix("°"),
+                        );
+                        ui.label("Dec:")
+                            .on_hover_text("Declination (-90.0 - 90.0°)");
+                        ui.add(
+                            egui::DragValue::new(&mut self.input_dec)
+                                .speed(0.1)
+                                .range(-90.0..=90.0)
+                                .suffix("°"),
+                        );
                     });
-                     ui.horizontal(|ui| {
-                        ui.label("Confidence:");
-                        ui.add(egui::DragValue::new(&mut self.input_confidence).speed(0.01).range(0.0..=1.0));
-                        ui.label("Target:");
-                        ui.add(egui::TextEdit::singleline(&mut self.input_target).hint_text("e.g. Sirius"));
+                    ui.horizontal(|ui| {
+                        ui.label("Confidence:").on_hover_text("Range: 0.0 - 1.0");
+                        ui.add(
+                            egui::DragValue::new(&mut self.input_confidence)
+                                .speed(0.01)
+                                .range(0.0..=1.0),
+                        );
+                        ui.label("Target:").on_hover_text("Max 32 characters");
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.input_target)
+                                .hint_text("e.g. Sirius")
+                                .char_limit(32),
+                        );
                     });
                 }
             }
 
-            if ui.button("Inject Packet")
+            if ui
+                .button("Inject Packet")
                 .on_hover_text("Construct and process a telemetry packet with the above values")
                 .clicked()
             {
@@ -267,14 +325,24 @@ impl AstroMonitorApp {
     }
 
     // Bolt Optimization: Accepts parsed result to avoid borrowing conflicts and unnecessary cloning
-    fn process_packet_result(&mut self, result: Result<TelemetryPacket, ParserError>, index: Option<usize>) {
+    fn process_packet_result(
+        &mut self,
+        result: Result<TelemetryPacket, ParserError>,
+        index: Option<usize>,
+    ) {
         // Bolt Optimization: Combined log message to reduce string allocations and VecDeque operations by 50%
         match result {
             Ok(packet) => {
                 let log_message = if let Some(idx) = index {
-                    format!("Packet {}: Parsed {:?} - {:?}", idx, packet.subsystem, packet.payload)
+                    format!(
+                        "Packet {}: Parsed {:?} - {:?}",
+                        idx, packet.subsystem, packet.payload
+                    )
                 } else {
-                    format!("Manual Packet: Parsed {:?} - {:?}", packet.subsystem, packet.payload)
+                    format!(
+                        "Manual Packet: Parsed {:?} - {:?}",
+                        packet.subsystem, packet.payload
+                    )
                 };
                 self.add_log(log_message);
 
@@ -284,7 +352,10 @@ impl AstroMonitorApp {
                         alert.level, alert.message
                     ));
                     // Bolt Optimization: Pre-format display text to avoid allocation in render loop
-                    let display_text = format!("[{:?}] {} (Time: {})", alert.level, alert.message, alert.timestamp);
+                    let display_text = format!(
+                        "[{:?}] {} (Time: {})",
+                        alert.level, alert.message, alert.timestamp
+                    );
                     self.alerts.push((alert, display_text));
                 }
             }
@@ -301,7 +372,10 @@ impl AstroMonitorApp {
 
     fn create_manual_packet(&self) -> Vec<u8> {
         let mut packet = Vec::new();
-        let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
         packet.extend_from_slice(&timestamp.to_be_bytes());
 
         match self.input_subsystem {
@@ -319,7 +393,7 @@ impl AstroMonitorApp {
             }
             InputSubsystem::StarTracker => {
                 packet.push(3); // Subsystem ID
-                // Calculate len: 3*8 (f64) + 1 (u8) + target.len()
+                                // Calculate len: 3*8 (f64) + 1 (u8) + target.len()
                 let len = 24 + 1 + self.input_target.len() as u16;
                 packet.extend_from_slice(&len.to_be_bytes()); // Len
 

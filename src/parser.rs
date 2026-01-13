@@ -49,16 +49,22 @@ impl Parser {
                 if data.len() < offset + 24 {
                     return Err(ParserError::BufferTooShort);
                 }
-                
-                let voltage_bytes = data[offset..offset + 8].try_into().map_err(|_| ParserError::BufferTooShort)?;
+
+                let voltage_bytes = data[offset..offset + 8]
+                    .try_into()
+                    .map_err(|_| ParserError::BufferTooShort)?;
                 let voltage = f64::from_be_bytes(voltage_bytes);
                 offset += 8;
 
-                let current_bytes = data[offset..offset + 8].try_into().map_err(|_| ParserError::BufferTooShort)?;
+                let current_bytes = data[offset..offset + 8]
+                    .try_into()
+                    .map_err(|_| ParserError::BufferTooShort)?;
                 let current = f64::from_be_bytes(current_bytes);
                 offset += 8;
 
-                let battery_bytes = data[offset..offset + 8].try_into().map_err(|_| ParserError::BufferTooShort)?;
+                let battery_bytes = data[offset..offset + 8]
+                    .try_into()
+                    .map_err(|_| ParserError::BufferTooShort)?;
                 let battery_level = f64::from_be_bytes(battery_bytes);
                 // offset += 8;
 
@@ -76,7 +82,9 @@ impl Parser {
                 if data.len() < offset + 8 {
                     return Err(ParserError::BufferTooShort);
                 }
-                let temp_bytes = data[offset..offset + 8].try_into().map_err(|_| ParserError::BufferTooShort)?;
+                let temp_bytes = data[offset..offset + 8]
+                    .try_into()
+                    .map_err(|_| ParserError::BufferTooShort)?;
                 let temp_celsius = f64::from_be_bytes(temp_bytes);
                 // offset += 8;
 
@@ -90,19 +98,25 @@ impl Parser {
                 if data.len() < offset + 25 {
                     return Err(ParserError::BufferTooShort);
                 }
-                
-                let ra_bytes = data[offset..offset + 8].try_into().map_err(|_| ParserError::BufferTooShort)?;
+
+                let ra_bytes = data[offset..offset + 8]
+                    .try_into()
+                    .map_err(|_| ParserError::BufferTooShort)?;
                 let ra = f64::from_be_bytes(ra_bytes);
                 offset += 8;
-                
-                let dec_bytes = data[offset..offset + 8].try_into().map_err(|_| ParserError::BufferTooShort)?;
+
+                let dec_bytes = data[offset..offset + 8]
+                    .try_into()
+                    .map_err(|_| ParserError::BufferTooShort)?;
                 let dec = f64::from_be_bytes(dec_bytes);
                 offset += 8;
 
-                let conf_bytes = data[offset..offset + 8].try_into().map_err(|_| ParserError::BufferTooShort)?;
+                let conf_bytes = data[offset..offset + 8]
+                    .try_into()
+                    .map_err(|_| ParserError::BufferTooShort)?;
                 let confidence = f64::from_be_bytes(conf_bytes);
                 offset += 8;
-                
+
                 let id_len = data[offset] as usize;
                 offset += 1;
 

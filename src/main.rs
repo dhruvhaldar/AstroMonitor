@@ -6,8 +6,7 @@ fn main() -> eframe::Result<()> {
     println!("Starting Astro Monitor GUI...");
 
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_inner_size([800.0, 600.0]),
+        viewport: egui::ViewportBuilder::default().with_inner_size([800.0, 600.0]),
         ..Default::default()
     };
 
