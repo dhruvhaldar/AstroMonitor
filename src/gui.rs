@@ -21,6 +21,7 @@ pub struct AstroMonitorApp {
     last_update: Instant,
     simulation_delay_ms: u64,
     paused: bool,
+    progress_text: String,
 
     // Input fields
     input_subsystem: InputSubsystem,
@@ -36,15 +37,18 @@ pub struct AstroMonitorApp {
 
 impl Default for AstroMonitorApp {
     fn default() -> Self {
+        let packets = simulation::generate_simulated_packets();
+        let progress_text = format!("0/{}", packets.len());
         Self {
             monitor: Monitor::default(),
-            packets: simulation::generate_simulated_packets(),
+            packets,
             packet_index: 0,
             logs: VecDeque::new(),
             alerts: Vec::new(),
             last_update: Instant::now(),
             simulation_delay_ms: 1000,
             paused: false,
+            progress_text,
 
             // Default input values
             input_subsystem: InputSubsystem::Power,
@@ -72,6 +76,7 @@ impl eframe::App for AstroMonitorApp {
                 let result = Parser::parse(&self.packets[self.packet_index]);
                 self.process_packet_result(result, Some(self.packet_index + 1));
                 self.packet_index += 1;
+                self.update_progress_text();
                 self.last_update = Instant::now();
             }
 
@@ -102,6 +107,7 @@ impl eframe::App for AstroMonitorApp {
                     .clicked()
                 {
                     self.packet_index = 0;
+                    self.update_progress_text();
                     self.logs.clear();
                     self.alerts.clear();
                     self.last_update = Instant::now();
@@ -111,8 +117,9 @@ impl eframe::App for AstroMonitorApp {
                     .on_hover_text("Adjust simulation speed (delay between packets in milliseconds)");
 
                 let progress = self.packet_index as f32 / self.packets.len() as f32;
+                // Bolt Optimization: Use cached progress text to avoid formatting/allocation every frame
                 ui.add(egui::ProgressBar::new(progress)
-                    .text(format!("{}/{}", self.packet_index, self.packets.len())));
+                    .text(&self.progress_text));
             });
 
             ui.separator();
@@ -259,6 +266,10 @@ impl eframe::App for AstroMonitorApp {
 }
 
 impl AstroMonitorApp {
+    fn update_progress_text(&mut self) {
+        self.progress_text = format!("{}/{}", self.packet_index, self.packets.len());
+    }
+
     fn add_log(&mut self, message: String) {
         if self.logs.len() >= MAX_LOGS {
             self.logs.pop_front();
