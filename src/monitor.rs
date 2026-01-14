@@ -1,7 +1,7 @@
 use crate::models::{TelemetryPacket, TelemetryPayload};
 use serde::Serialize;
 
-#[derive(Debug, Serialize, PartialEq)]
+#[derive(Debug, Serialize, PartialEq, Clone, Copy)]
 pub enum AlertLevel {
     Info,
     Warning,

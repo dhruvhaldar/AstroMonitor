@@ -7,3 +7,7 @@
 ## 2025-02-19 - [Pre-format Alert Strings]
 **Learning:** Immediate mode GUIs (like `egui`) redraw every frame. Using `format!` inside a render loop (even a virtualized one) allocates memory dozens of times per second for visible rows.
 **Action:** Pre-format static display strings (like log entries or alerts) when the data is first received/created, and store the formatted string alongside the data. Render using the cached string.
+
+## 2025-02-20 - [Eliminate Redundant Storage in Logs]
+**Learning:** Storing the full original data structure (like `Alert`) alongside its pre-formatted display string duplicates information and increases memory usage, especially if the original structure contains its own strings (e.g., `message`).
+**Action:** If the original structure is not queried after creation, store only the minimal metadata (like `AlertLevel`) and the pre-formatted string in long-lived collections to reduce heap usage.
