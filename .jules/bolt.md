@@ -1,3 +1,7 @@
 ## 2024-05-23 - [Render Loop Allocations]
 **Learning:** In immediate mode GUIs like `egui`, operations in the `update()` loop run every frame (e.g., 60fps). Seemingly harmless operations like `format!` inside `ui.add()` create heap allocations on every frame. Caching strings that only change when state changes (like progress indicators) prevents this constant allocation churn.
 **Action:** Store formatted strings in the struct and update them only when the underlying data changes, passing a reference (`&self.cached_text`) to the widget.
+
+## 2024-10-24 - [Data Redundancy in GUI State]
+**Learning:** When optimizing render loops by pre-formatting strings (caching), it's easy to accidentally duplicate data (storing both the original struct and the formatted string). If the original struct is only used for the initial format, it becomes dead weight.
+**Action:** Audit cached display lists. If you store a formatted string, check if you can replace the original heavy struct with a lighter key or enum (e.g., `(Alert, String)` -> `(AlertLevel, String)`).
