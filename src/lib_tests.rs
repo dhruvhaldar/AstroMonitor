@@ -1,6 +1,5 @@
 use super::*;
 
-
 #[test]
 fn test_parse_power() {
     let mut data = Vec::new();

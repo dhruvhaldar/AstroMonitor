@@ -13,3 +13,7 @@
 ## 2025-02-24 - Anticipatory Tooltips
 **Learning:** Tooltips on selection controls (like radio buttons) can "preview" the consequences of the selection (e.g., which form fields will appear). This reduces clicking around just to see what options are available.
 **Action:** Add `.on_hover_text()` to radio buttons or dropdown items that trigger significant UI layout changes.
+
+## 2025-02-25 - Visual Scannability with Icons
+**Learning:** In text-heavy monitoring dashboards, prefixing labels and log messages with relevant Unicode icons (e.g., "⚡ Power", "🔴 [Critical]") significantly speeds up visual scanning and reinforces state recognition without consuming extra layout space.
+**Action:** Use consistent Unicode icons for subsystem names, control states (Play/Pause), and alert levels in both UI controls and log streams.
