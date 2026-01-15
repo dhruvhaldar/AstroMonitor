@@ -17,3 +17,7 @@
 ## 2025-02-25 - Visual Scannability with Icons
 **Learning:** In text-heavy monitoring dashboards, prefixing labels and log messages with relevant Unicode icons (e.g., "⚡ Power", "🔴 [Critical]") significantly speeds up visual scanning and reinforces state recognition without consuming extra layout space.
 **Action:** Use consistent Unicode icons for subsystem names, control states (Play/Pause), and alert levels in both UI controls and log streams.
+
+## 2025-02-26 - Data Portability for Monitoring
+**Learning:** In monitoring tools, users often need to extract logs or alerts for external analysis (e.g., sharing with a colleague or pasting into a report). A simple "Copy to Clipboard" button is a high-value, low-effort addition that prevents frustration.
+**Action:** Always provide a "Copy" action (📋) alongside "Clear" actions for text-heavy lists like logs or alerts.

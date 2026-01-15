@@ -146,6 +146,15 @@ impl eframe::App for AstroMonitorApp {
                             if ui.button("🗑").on_hover_text("Clear logs").clicked() {
                                 self.logs.clear();
                             }
+                            if ui
+                                .button("📋")
+                                .on_hover_text("Copy logs to clipboard")
+                                .clicked()
+                            {
+                                let all_logs =
+                                    self.logs.iter().cloned().collect::<Vec<_>>().join("\n");
+                                ui.output_mut(|o| o.copied_text = all_logs);
+                            }
                         });
                     });
 
@@ -177,6 +186,19 @@ impl eframe::App for AstroMonitorApp {
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             if ui.button("🗑").on_hover_text("Clear alerts").clicked() {
                                 self.alerts.clear();
+                            }
+                            if ui
+                                .button("📋")
+                                .on_hover_text("Copy alerts to clipboard")
+                                .clicked()
+                            {
+                                let all_alerts = self
+                                    .alerts
+                                    .iter()
+                                    .map(|(_, text)| text.clone())
+                                    .collect::<Vec<_>>()
+                                    .join("\n");
+                                ui.output_mut(|o| o.copied_text = all_alerts);
                             }
                         });
                     });
