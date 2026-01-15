@@ -1,4 +1,4 @@
-use crate::{simulation, Alert, AlertLevel, Monitor, Parser, ParserError, TelemetryPacket};
+use crate::{simulation, AlertLevel, Monitor, Parser, ParserError, TelemetryPacket};
 use eframe::egui;
 use std::collections::VecDeque;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -17,7 +17,7 @@ pub struct AstroMonitorApp {
     packets: Vec<Vec<u8>>,
     packet_index: usize,
     logs: VecDeque<String>,
-    alerts: Vec<(Alert, String)>,
+    alerts: Vec<(AlertLevel, String)>,
     last_update: Instant,
     simulation_delay_ms: u64,
     paused: bool,
@@ -217,8 +217,8 @@ impl eframe::App for AstroMonitorApp {
                             .show_rows(ui, row_height, self.alerts.len(), |ui, row_range| {
                                 for i in row_range {
                                     // Bolt Optimization: Use pre-formatted string to avoid formatting in render loop
-                                    let (alert, text) = &self.alerts[i];
-                                    let color = match alert.level {
+                                    let (level, text) = &self.alerts[i];
+                                    let color = match level {
                                         AlertLevel::Critical => egui::Color32::RED,
                                         AlertLevel::Warning => egui::Color32::YELLOW,
                                         AlertLevel::Info => egui::Color32::LIGHT_BLUE,
@@ -385,7 +385,7 @@ impl AstroMonitorApp {
                         "{} [{:?}] {} (Time: {})",
                         icon, alert.level, alert.message, alert.timestamp
                     );
-                    self.alerts.push((alert, display_text));
+                    self.alerts.push((alert.level, display_text));
                 }
             }
             Err(e) => {
