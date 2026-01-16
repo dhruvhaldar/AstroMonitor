@@ -21,3 +21,7 @@
 ## 2025-02-26 - Data Portability for Monitoring
 **Learning:** In monitoring tools, users often need to extract logs or alerts for external analysis (e.g., sharing with a colleague or pasting into a report). A simple "Copy to Clipboard" button is a high-value, low-effort addition that prevents frustration.
 **Action:** Always provide a "Copy" action (📋) alongside "Clear" actions for text-heavy lists like logs or alerts.
+
+## 2025-02-27 - Form Submission Shortcuts
+**Learning:** While global shortcuts must respect focus, "Form Submission" shortcuts (like Ctrl+Enter) *should* function while inputs are focused, as this is a standard power-user pattern.
+**Action:** For submit actions, check `ui.input(...)` directly without `!wants_keyboard_input()`, and document the shortcut in the submit button's tooltip.
