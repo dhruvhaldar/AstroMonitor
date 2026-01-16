@@ -1,6 +1,7 @@
 use crate::{simulation, AlertLevel, Monitor, Parser, ParserError, TelemetryPacket};
 use eframe::egui;
 use std::collections::VecDeque;
+use std::fmt::Write;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const MAX_LOGS: usize = 1000;
@@ -338,7 +339,14 @@ impl eframe::App for AstroMonitorApp {
 
 impl AstroMonitorApp {
     fn update_progress_text(&mut self) {
-        self.progress_text = format!("{}/{}", self.packet_index, self.packets.len());
+        // Bolt Optimization: Reuse the existing string buffer to avoid allocation
+        self.progress_text.clear();
+        let _ = write!(
+            self.progress_text,
+            "{}/{}",
+            self.packet_index,
+            self.packets.len()
+        );
     }
 
     fn add_log(&mut self, message: String) {
