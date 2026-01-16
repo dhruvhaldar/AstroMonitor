@@ -326,8 +326,9 @@ impl eframe::App for AstroMonitorApp {
 
             if ui
                 .button("Inject Packet")
-                .on_hover_text("Construct and process a telemetry packet with the above values")
+                .on_hover_text("Construct and process a telemetry packet with the above values (Ctrl+Enter)")
                 .clicked()
+                || (ui.input(|i| i.modifiers.command && i.key_pressed(egui::Key::Enter)))
             {
                 let packet = self.create_manual_packet();
                 let result = Parser::parse(&packet);
