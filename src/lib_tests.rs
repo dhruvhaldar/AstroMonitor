@@ -112,5 +112,8 @@ fn test_monitor_event_formatting() {
 
     // Check new check method (optimized path)
     let event = monitor.check(&packet).unwrap();
-    assert_eq!(event.condition.to_string(), "Low Battery: 10.00% (Threshold: 20.00%)");
+    assert_eq!(
+        event.condition.to_string(),
+        "Low Battery: 10.00% (Threshold: 20.00%)"
+    );
 }

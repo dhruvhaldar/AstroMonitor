@@ -34,6 +34,10 @@ pub struct AstroMonitorApp {
     input_dec: f64,
     input_confidence: f64,
     input_target: String,
+
+    // Feedback state
+    last_log_copy_time: Option<Instant>,
+    last_alert_copy_time: Option<Instant>,
 }
 
 impl Default for AstroMonitorApp {
@@ -50,6 +54,8 @@ impl Default for AstroMonitorApp {
             simulation_delay_ms: 1000,
             paused: false,
             progress_text,
+            last_log_copy_time: None,
+            last_alert_copy_time: None,
 
             // Default input values
             input_subsystem: InputSubsystem::Power,
@@ -147,14 +153,20 @@ impl eframe::App for AstroMonitorApp {
                             if ui.button("🗑").on_hover_text("Clear logs").clicked() {
                                 self.logs.clear();
                             }
-                            if ui
-                                .button("📋")
-                                .on_hover_text("Copy logs to clipboard")
-                                .clicked()
+                            let (icon, tooltip) = if let Some(_t) = self
+                                .last_log_copy_time
+                                .filter(|t| t.elapsed().as_secs() < 2)
                             {
+                                ("✔", "Copied!")
+                            } else {
+                                ("📋", "Copy logs to clipboard")
+                            };
+                            if ui.button(icon).on_hover_text(tooltip).clicked() {
                                 let all_logs =
                                     self.logs.iter().cloned().collect::<Vec<_>>().join("\n");
                                 ui.output_mut(|o| o.copied_text = all_logs);
+                                self.last_log_copy_time = Some(Instant::now());
+                                ui.ctx().request_repaint_after(Duration::from_secs(2));
                             }
                         });
                     });
@@ -188,11 +200,15 @@ impl eframe::App for AstroMonitorApp {
                             if ui.button("🗑").on_hover_text("Clear alerts").clicked() {
                                 self.alerts.clear();
                             }
-                            if ui
-                                .button("📋")
-                                .on_hover_text("Copy alerts to clipboard")
-                                .clicked()
+                            let (icon, tooltip) = if let Some(_t) = self
+                                .last_alert_copy_time
+                                .filter(|t| t.elapsed().as_secs() < 2)
                             {
+                                ("✔", "Copied!")
+                            } else {
+                                ("📋", "Copy alerts to clipboard")
+                            };
+                            if ui.button(icon).on_hover_text(tooltip).clicked() {
                                 let all_alerts = self
                                     .alerts
                                     .iter()
@@ -200,6 +216,8 @@ impl eframe::App for AstroMonitorApp {
                                     .collect::<Vec<_>>()
                                     .join("\n");
                                 ui.output_mut(|o| o.copied_text = all_alerts);
+                                self.last_alert_copy_time = Some(Instant::now());
+                                ui.ctx().request_repaint_after(Duration::from_secs(2));
                             }
                         });
                     });
@@ -326,7 +344,9 @@ impl eframe::App for AstroMonitorApp {
 
             if ui
                 .button("Inject Packet")
-                .on_hover_text("Construct and process a telemetry packet with the above values (Ctrl+Enter)")
+                .on_hover_text(
+                    "Construct and process a telemetry packet with the above values (Ctrl+Enter)",
+                )
                 .clicked()
                 || (ui.input(|i| i.modifiers.command && i.key_pressed(egui::Key::Enter)))
             {
