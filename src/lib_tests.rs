@@ -92,3 +92,25 @@ fn test_monitor_alerts() {
     };
     assert!(monitor.analyze(&packet_good).is_none());
 }
+
+#[test]
+fn test_monitor_event_formatting() {
+    let monitor = Monitor::default();
+    let packet = TelemetryPacket {
+        timestamp: 100,
+        subsystem: Subsystem::Power,
+        payload: TelemetryPayload::Power(PowerData {
+            voltage: 20.0,
+            current: 1.0,
+            battery_level: 10.0,
+        }),
+    };
+
+    // Check legacy analyze
+    let alert = monitor.analyze(&packet).unwrap();
+    assert_eq!(alert.message, "Low Battery: 10.00% (Threshold: 20.00%)");
+
+    // Check new check method (optimized path)
+    let event = monitor.check(&packet).unwrap();
+    assert_eq!(event.condition.to_string(), "Low Battery: 10.00% (Threshold: 20.00%)");
+}

@@ -5,3 +5,7 @@
 ## 2024-10-24 - [Data Redundancy in GUI State]
 **Learning:** When optimizing render loops by pre-formatting strings (caching), it's easy to accidentally duplicate data (storing both the original struct and the formatted string). If the original struct is only used for the initial format, it becomes dead weight.
 **Action:** Audit cached display lists. If you store a formatted string, check if you can replace the original heavy struct with a lighter key or enum (e.g., `(Alert, String)` -> `(AlertLevel, String)`).
+
+## 2024-11-20 - [Intermediate Allocations]
+**Learning:** Structs used to pass data between systems (e.g., Logic -> GUI) often contain pre-formatted `String` fields for convenience. This forces an allocation even if the consumer immediately re-formats or discards the string.
+**Action:** Prefer returning lightweight structs with enums/primitives (`MonitorEvent`) and implement `std::fmt::Display` for them. This allows the consumer to format directly into their final destination (like a log buffer), bypassing the intermediate allocation.

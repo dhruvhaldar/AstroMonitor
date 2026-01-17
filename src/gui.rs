@@ -379,22 +379,25 @@ impl AstroMonitorApp {
                 };
                 self.add_log(log_message);
 
-                if let Some(alert) = self.monitor.analyze(&packet) {
+                // Bolt Optimization: Use `check` to get a lightweight MonitorEvent instead of `analyze`
+                // which avoids allocating a String for the alert message before it's needed.
+                // We format directly into the log and display strings, saving 1 allocation per alert.
+                if let Some(event) = self.monitor.check(&packet) {
                     self.add_log(format!(
                         "*** ALERT: [{:?}] {} ***",
-                        alert.level, alert.message
+                        event.level, event.condition
                     ));
                     // Bolt Optimization: Pre-format display text to avoid allocation in render loop
-                    let icon = match alert.level {
+                    let icon = match event.level {
                         AlertLevel::Critical => "🔴",
                         AlertLevel::Warning => "⚠️",
                         AlertLevel::Info => "ℹ️",
                     };
                     let display_text = format!(
                         "{} [{:?}] {} (Time: {})",
-                        icon, alert.level, alert.message, alert.timestamp
+                        icon, event.level, event.condition, event.timestamp
                     );
-                    self.alerts.push((alert.level, display_text));
+                    self.alerts.push((event.level, display_text));
                 }
             }
             Err(e) => {
