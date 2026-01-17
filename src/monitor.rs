@@ -1,11 +1,48 @@
 use crate::models::{TelemetryPacket, TelemetryPayload};
 use serde::Serialize;
+use std::fmt;
 
-#[derive(Debug, Serialize, PartialEq)]
+#[derive(Debug, Serialize, PartialEq, Clone, Copy)]
 pub enum AlertLevel {
     Info,
     Warning,
     Critical,
+}
+
+#[derive(Debug, Serialize, PartialEq, Clone)]
+pub enum AlertCondition {
+    LowBattery { value: f64, threshold: f64 },
+    HighTemperature { value: f64, threshold: f64 },
+    LowStarConfidence { value: f64, threshold: f64 },
+}
+
+impl fmt::Display for AlertCondition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AlertCondition::LowBattery { value, threshold } => write!(
+                f,
+                "Low Battery: {:.2}% (Threshold: {:.2}%)",
+                value, threshold
+            ),
+            AlertCondition::HighTemperature { value, threshold } => write!(
+                f,
+                "High Temperature: {:.2}C (Threshold: {:.2}C)",
+                value, threshold
+            ),
+            AlertCondition::LowStarConfidence { value, threshold } => write!(
+                f,
+                "Low Star Confidence: {:.2} (Threshold: {:.2})",
+                value, threshold
+            ),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, PartialEq, Clone)]
+pub struct MonitorEvent {
+    pub level: AlertLevel,
+    pub condition: AlertCondition,
+    pub timestamp: u64,
 }
 
 #[derive(Debug, Serialize, PartialEq)]
@@ -13,6 +50,16 @@ pub struct Alert {
     pub level: AlertLevel,
     pub message: String,
     pub timestamp: u64,
+}
+
+impl From<MonitorEvent> for Alert {
+    fn from(event: MonitorEvent) -> Self {
+        Self {
+            level: event.level,
+            message: event.condition.to_string(),
+            timestamp: event.timestamp,
+        }
+    }
 }
 
 pub struct Monitor {
@@ -41,40 +88,40 @@ impl Monitor {
         }
     }
 
-    pub fn analyze(&self, packet: &TelemetryPacket) -> Option<Alert> {
+    pub fn check(&self, packet: &TelemetryPacket) -> Option<MonitorEvent> {
         match &packet.payload {
             TelemetryPayload::Power(data) => {
                 if data.battery_level < self.min_battery_level {
-                    return Some(Alert {
+                    return Some(MonitorEvent {
                         level: AlertLevel::Critical,
-                        message: format!(
-                            "Low Battery: {:.2}% (Threshold: {:.2}%)",
-                            data.battery_level, self.min_battery_level
-                        ),
+                        condition: AlertCondition::LowBattery {
+                            value: data.battery_level,
+                            threshold: self.min_battery_level,
+                        },
                         timestamp: packet.timestamp,
                     });
                 }
             }
             TelemetryPayload::Thermal(data) => {
                 if data.temp_celsius > self.max_temp_celsius {
-                    return Some(Alert {
+                    return Some(MonitorEvent {
                         level: AlertLevel::Warning,
-                        message: format!(
-                            "High Temperature: {:.2}C (Threshold: {:.2}C)",
-                            data.temp_celsius, self.max_temp_celsius
-                        ),
+                        condition: AlertCondition::HighTemperature {
+                            value: data.temp_celsius,
+                            threshold: self.max_temp_celsius,
+                        },
                         timestamp: packet.timestamp,
                     });
                 }
             }
             TelemetryPayload::StarTracker(data) => {
                 if data.confidence < self.min_star_confidence {
-                    return Some(Alert {
+                    return Some(MonitorEvent {
                         level: AlertLevel::Info,
-                        message: format!(
-                            "Low Star Confidence: {:.2} (Threshold: {:.2})",
-                            data.confidence, self.min_star_confidence
-                        ),
+                        condition: AlertCondition::LowStarConfidence {
+                            value: data.confidence,
+                            threshold: self.min_star_confidence,
+                        },
                         timestamp: packet.timestamp,
                     });
                 }
@@ -82,5 +129,9 @@ impl Monitor {
             _ => {}
         }
         None
+    }
+
+    pub fn analyze(&self, packet: &TelemetryPacket) -> Option<Alert> {
+        self.check(packet).map(Alert::from)
     }
 }
