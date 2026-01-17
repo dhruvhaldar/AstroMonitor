@@ -25,3 +25,7 @@
 ## 2025-02-27 - Form Submission Shortcuts
 **Learning:** While global shortcuts must respect focus, "Form Submission" shortcuts (like Ctrl+Enter) *should* function while inputs are focused, as this is a standard power-user pattern.
 **Action:** For submit actions, check `ui.input(...)` directly without `!wants_keyboard_input()`, and document the shortcut in the submit button's tooltip.
+
+## 2025-02-27 - Immediate Feedback for Invisible Actions
+**Learning:** Actions like "Copy to Clipboard" are invisible. Without visual feedback, users lack confidence that the action succeeded and often click multiple times.
+**Action:** Implement a temporary "success state" (e.g., changing the icon to ✔ for 2 seconds) for invisible actions to provide immediate reassurance.
