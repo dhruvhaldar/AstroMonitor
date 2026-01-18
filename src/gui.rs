@@ -370,11 +370,16 @@ impl AstroMonitorApp {
         );
     }
 
-    fn add_log(&mut self, message: String) {
-        if self.logs.len() >= MAX_LOGS {
-            self.logs.pop_front();
-        }
-        self.logs.push_back(message);
+    fn add_log(&mut self, args: std::fmt::Arguments<'_>) {
+        let mut buffer = if self.logs.len() >= MAX_LOGS {
+            self.logs.pop_front().unwrap_or_else(String::new)
+        } else {
+            String::new()
+        };
+        buffer.clear();
+        // Bolt Optimization: Write directly to recycled buffer to avoid allocation
+        let _ = std::fmt::write(&mut buffer, args);
+        self.logs.push_back(buffer);
     }
 
     // Bolt Optimization: Accepts parsed result to avoid borrowing conflicts and unnecessary cloning
@@ -386,24 +391,23 @@ impl AstroMonitorApp {
         // Bolt Optimization: Combined log message to reduce string allocations and VecDeque operations by 50%
         match result {
             Ok(packet) => {
-                let log_message = if let Some(idx) = index {
-                    format!(
+                if let Some(idx) = index {
+                    self.add_log(format_args!(
                         "Packet {}: Parsed {:?} - {:?}",
                         idx, packet.subsystem, packet.payload
-                    )
+                    ));
                 } else {
-                    format!(
+                    self.add_log(format_args!(
                         "Manual Packet: Parsed {:?} - {:?}",
                         packet.subsystem, packet.payload
-                    )
-                };
-                self.add_log(log_message);
+                    ));
+                }
 
                 // Bolt Optimization: Use `check` to get a lightweight MonitorEvent instead of `analyze`
                 // which avoids allocating a String for the alert message before it's needed.
                 // We format directly into the log and display strings, saving 1 allocation per alert.
                 if let Some(event) = self.monitor.check(&packet) {
-                    self.add_log(format!(
+                    self.add_log(format_args!(
                         "*** ALERT: [{:?}] {} ***",
                         event.level, event.condition
                     ));
@@ -421,12 +425,11 @@ impl AstroMonitorApp {
                 }
             }
             Err(e) => {
-                let log_message = if let Some(idx) = index {
-                    format!("Packet {}: Error parsing: {}", idx, e)
+                if let Some(idx) = index {
+                    self.add_log(format_args!("Packet {}: Error parsing: {}", idx, e));
                 } else {
-                    format!("Manual Packet: Error parsing: {}", e)
-                };
-                self.add_log(log_message);
+                    self.add_log(format_args!("Manual Packet: Error parsing: {}", e));
+                }
             }
         }
     }
