@@ -317,14 +317,18 @@ impl eframe::App for AstroMonitorApp {
                         ui.add(
                             egui::DragValue::new(&mut self.input_ra)
                                 .speed(0.1)
+                                .range(0.0..=360.0)
                                 .suffix("°"),
-                        );
+                        )
+                        .on_hover_text("Right Ascension (0° - 360°)");
                         ui.label("Dec:");
                         ui.add(
                             egui::DragValue::new(&mut self.input_dec)
                                 .speed(0.1)
+                                .range(-90.0..=90.0)
                                 .suffix("°"),
-                        );
+                        )
+                        .on_hover_text("Declination (-90° - +90°)");
                     });
                     ui.horizontal(|ui| {
                         ui.label("Confidence:");
@@ -336,8 +340,10 @@ impl eframe::App for AstroMonitorApp {
                         ui.label("Target:");
                         ui.add(
                             egui::TextEdit::singleline(&mut self.input_target)
-                                .hint_text("e.g. Sirius"),
-                        );
+                                .hint_text("e.g. Sirius")
+                                .char_limit(255),
+                        )
+                        .on_hover_text("Target ID (max 255 characters)");
                     });
                 }
             }

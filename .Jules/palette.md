@@ -29,3 +29,7 @@
 ## 2025-02-27 - Immediate Feedback for Invisible Actions
 **Learning:** Actions like "Copy to Clipboard" are invisible. Without visual feedback, users lack confidence that the action succeeded and often click multiple times.
 **Action:** Implement a temporary "success state" (e.g., changing the icon to ✔ for 2 seconds) for invisible actions to provide immediate reassurance.
+
+## 2025-02-28 - Domain-Specific Input Constraints
+**Learning:** UI input widgets (like sliders or text fields) should strictly enforce the underlying data type or physical constraints (e.g., `u8` limits or geometric bounds) to prevent runtime panics or invalid states.
+**Action:** Use `.range()` for numeric inputs and `.char_limit()` for text inputs whenever the backend has hard limits (like fixed-size buffers or specific coordinate systems).
