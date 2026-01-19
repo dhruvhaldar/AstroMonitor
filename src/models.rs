@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -27,23 +29,26 @@ pub struct ThermalData {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct StarTrackerReading {
-    pub target_id: Option<String>,
+pub struct StarTrackerReading<'a> {
+    #[serde(borrow)]
+    pub target_id: Option<Cow<'a, str>>,
     pub coordinates: CelestialCoordinates,
     pub confidence: f64, // 0.0 to 1.0
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum TelemetryPayload {
+pub enum TelemetryPayload<'a> {
     Power(PowerData),
     Thermal(ThermalData),
-    StarTracker(StarTrackerReading),
+    #[serde(borrow)]
+    StarTracker(StarTrackerReading<'a>),
     Unknown,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct TelemetryPacket {
+pub struct TelemetryPacket<'a> {
     pub timestamp: u64, // Unix timestamp
     pub subsystem: Subsystem,
-    pub payload: TelemetryPayload,
+    #[serde(borrow)]
+    pub payload: TelemetryPayload<'a>,
 }

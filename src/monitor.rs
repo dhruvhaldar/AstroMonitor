@@ -88,7 +88,7 @@ impl Monitor {
         }
     }
 
-    pub fn check(&self, packet: &TelemetryPacket) -> Option<MonitorEvent> {
+    pub fn check(&self, packet: &TelemetryPacket<'_>) -> Option<MonitorEvent> {
         match &packet.payload {
             TelemetryPayload::Power(data) => {
                 if data.battery_level < self.min_battery_level {
@@ -131,7 +131,7 @@ impl Monitor {
         None
     }
 
-    pub fn analyze(&self, packet: &TelemetryPacket) -> Option<Alert> {
+    pub fn analyze(&self, packet: &TelemetryPacket<'_>) -> Option<Alert> {
         self.check(packet).map(Alert::from)
     }
 }
