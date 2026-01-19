@@ -299,6 +299,13 @@ impl eframe::App for AstroMonitorApp {
                                 .range(0.0..=100.0)
                                 .suffix(" %"),
                         );
+                        if self.input_battery < self.monitor.min_battery_level {
+                            ui.label(egui::RichText::new("⚠").color(egui::Color32::RED))
+                                .on_hover_text(format!(
+                                    "Values below {:.0}% will trigger a Critical alert",
+                                    self.monitor.min_battery_level
+                                ));
+                        }
                     });
                 }
                 InputSubsystem::Thermal => {
@@ -309,6 +316,13 @@ impl eframe::App for AstroMonitorApp {
                                 .speed(0.5)
                                 .suffix(" C"),
                         );
+                        if self.input_temp > self.monitor.max_temp_celsius {
+                            ui.label(egui::RichText::new("⚠").color(egui::Color32::YELLOW))
+                                .on_hover_text(format!(
+                                    "Values above {:.0}°C will trigger a Warning alert",
+                                    self.monitor.max_temp_celsius
+                                ));
+                        }
                     });
                 }
                 InputSubsystem::StarTracker => {
@@ -337,6 +351,13 @@ impl eframe::App for AstroMonitorApp {
                                 .speed(0.01)
                                 .range(0.0..=1.0),
                         );
+                        if self.input_confidence < self.monitor.min_star_confidence {
+                            ui.label(egui::RichText::new("ℹ").color(egui::Color32::LIGHT_BLUE))
+                                .on_hover_text(format!(
+                                    "Values below {:.2} will trigger an Info alert",
+                                    self.monitor.min_star_confidence
+                                ));
+                        }
                         ui.label("Target:");
                         ui.add(
                             egui::TextEdit::singleline(&mut self.input_target)
