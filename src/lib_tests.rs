@@ -55,7 +55,7 @@ fn test_parse_star_tracker() {
         assert_eq!(s.coordinates.right_ascension, ra);
         assert_eq!(s.coordinates.declination, dec);
         assert_eq!(s.confidence, conf);
-        assert_eq!(s.target_id, Some(target_id.to_string()));
+        assert_eq!(s.target_id, Some(std::borrow::Cow::Borrowed(target_id)));
     } else {
         panic!("Wrong payload type");
     }

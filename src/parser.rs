@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::models::{
     CelestialCoordinates, PowerData, StarTrackerReading, Subsystem, TelemetryPacket,
     TelemetryPayload, ThermalData,
@@ -19,7 +21,7 @@ pub enum ParserError {
 pub struct Parser;
 
 impl Parser {
-    pub fn parse(data: &[u8]) -> Result<TelemetryPacket, ParserError> {
+    pub fn parse<'a>(data: &'a [u8]) -> Result<TelemetryPacket<'a>, ParserError> {
         let mut offset = 0;
 
         if data.len() < 11 {
@@ -125,8 +127,9 @@ impl Parser {
                 }
                 let id_bytes = &data[offset..offset + id_len];
                 let target_id = if id_len > 0 {
-                    // Bolt Optimization: Validate UTF-8 on slice directly to avoid allocating Vec<u8>
-                    Some(std::str::from_utf8(id_bytes)?.to_string())
+                    // Bolt Optimization: Use Cow::Borrowed to avoid allocating a new String.
+                    // The string slice refers directly to the input buffer 'data'.
+                    Some(Cow::Borrowed(std::str::from_utf8(id_bytes)?))
                 } else {
                     None
                 };

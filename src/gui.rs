@@ -79,9 +79,15 @@ impl eframe::App for AstroMonitorApp {
 
             if self.last_update.elapsed() >= delay {
                 // Bolt Optimization: Parse packet first to avoid cloning the packet data vector.
-                // We borrow `self.packets` (immutable) then `self` (mutable) separately.
+                // We borrow `self.packets` (immutable) then `self` fields (mutable) separately.
                 let result = Parser::parse(&self.packets[self.packet_index]);
-                self.process_packet_result(result, Some(self.packet_index + 1));
+                Self::process_result(
+                    &mut self.logs,
+                    &mut self.alerts,
+                    &self.monitor,
+                    result,
+                    Some(self.packet_index + 1),
+                );
                 self.packet_index += 1;
                 self.update_progress_text();
                 self.last_update = Instant::now();
@@ -358,7 +364,7 @@ impl eframe::App for AstroMonitorApp {
             {
                 let packet = self.create_manual_packet();
                 let result = Parser::parse(&packet);
-                self.process_packet_result(result, None);
+                Self::process_result(&mut self.logs, &mut self.alerts, &self.monitor, result, None);
             }
         });
     }
@@ -376,47 +382,55 @@ impl AstroMonitorApp {
         );
     }
 
-    fn add_log(&mut self, args: std::fmt::Arguments<'_>) {
-        let mut buffer = if self.logs.len() >= MAX_LOGS {
-            self.logs.pop_front().unwrap_or_else(String::new)
+    fn add_to_log(logs: &mut VecDeque<String>, args: std::fmt::Arguments<'_>) {
+        let mut buffer = if logs.len() >= MAX_LOGS {
+            logs.pop_front().unwrap_or_else(String::new)
         } else {
             String::new()
         };
         buffer.clear();
         // Bolt Optimization: Write directly to recycled buffer to avoid allocation
         let _ = std::fmt::write(&mut buffer, args);
-        self.logs.push_back(buffer);
+        logs.push_back(buffer);
     }
 
-    // Bolt Optimization: Accepts parsed result to avoid borrowing conflicts and unnecessary cloning
-    fn process_packet_result(
-        &mut self,
-        result: Result<TelemetryPacket, ParserError>,
+    // Bolt Optimization: Static processing function to allow split borrowing
+    fn process_result(
+        logs: &mut VecDeque<String>,
+        alerts: &mut Vec<(AlertLevel, String)>,
+        monitor: &Monitor,
+        result: Result<TelemetryPacket<'_>, ParserError>,
         index: Option<usize>,
     ) {
         // Bolt Optimization: Combined log message to reduce string allocations and VecDeque operations by 50%
         match result {
             Ok(packet) => {
                 if let Some(idx) = index {
-                    self.add_log(format_args!(
-                        "Packet {}: Parsed {:?} - {:?}",
-                        idx, packet.subsystem, packet.payload
-                    ));
+                    Self::add_to_log(
+                        logs,
+                        format_args!(
+                            "Packet {}: Parsed {:?} - {:?}",
+                            idx, packet.subsystem, packet.payload
+                        ),
+                    );
                 } else {
-                    self.add_log(format_args!(
-                        "Manual Packet: Parsed {:?} - {:?}",
-                        packet.subsystem, packet.payload
-                    ));
+                    Self::add_to_log(
+                        logs,
+                        format_args!(
+                            "Manual Packet: Parsed {:?} - {:?}",
+                            packet.subsystem, packet.payload
+                        ),
+                    );
                 }
 
                 // Bolt Optimization: Use `check` to get a lightweight MonitorEvent instead of `analyze`
                 // which avoids allocating a String for the alert message before it's needed.
                 // We format directly into the log and display strings, saving 1 allocation per alert.
-                if let Some(event) = self.monitor.check(&packet) {
-                    self.add_log(format_args!(
-                        "*** ALERT: [{:?}] {} ***",
-                        event.level, event.condition
-                    ));
+                if let Some(event) = monitor.check(&packet) {
+                    Self::add_to_log(
+                        logs,
+                        format_args!("*** ALERT: [{:?}] {} ***", event.level, event.condition),
+                    );
                     // Bolt Optimization: Pre-format display text to avoid allocation in render loop
                     let icon = match event.level {
                         AlertLevel::Critical => "🔴",
@@ -427,14 +441,14 @@ impl AstroMonitorApp {
                         "{} [{:?}] {} (Time: {})",
                         icon, event.level, event.condition, event.timestamp
                     );
-                    self.alerts.push((event.level, display_text));
+                    alerts.push((event.level, display_text));
                 }
             }
             Err(e) => {
                 if let Some(idx) = index {
-                    self.add_log(format_args!("Packet {}: Error parsing: {}", idx, e));
+                    Self::add_to_log(logs, format_args!("Packet {}: Error parsing: {}", idx, e));
                 } else {
-                    self.add_log(format_args!("Manual Packet: Error parsing: {}", e));
+                    Self::add_to_log(logs, format_args!("Manual Packet: Error parsing: {}", e));
                 }
             }
         }
