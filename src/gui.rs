@@ -38,14 +38,36 @@ pub struct AstroMonitorApp {
     // Feedback state
     last_log_copy_time: Option<Instant>,
     last_alert_copy_time: Option<Instant>,
+
+    // Cached Tooltips (Bolt Optimization)
+    // Note: These must be updated if `monitor` thresholds are changed at runtime.
+    cached_battery_tooltip: String,
+    cached_temp_tooltip: String,
+    cached_star_tooltip: String,
 }
 
 impl Default for AstroMonitorApp {
     fn default() -> Self {
         let packets = simulation::generate_simulated_packets();
         let progress_text = format!("0/{}", packets.len());
+        let monitor = Monitor::default();
+
+        // Bolt Optimization: Pre-format tooltip strings to avoid allocation in render loop
+        let cached_battery_tooltip = format!(
+            "Values below {:.0}% will trigger a Critical alert",
+            monitor.min_battery_level
+        );
+        let cached_temp_tooltip = format!(
+            "Values above {:.0}°C will trigger a Warning alert",
+            monitor.max_temp_celsius
+        );
+        let cached_star_tooltip = format!(
+            "Values below {:.2} will trigger an Info alert",
+            monitor.min_star_confidence
+        );
+
         Self {
-            monitor: Monitor::default(),
+            monitor,
             packets,
             packet_index: 0,
             logs: VecDeque::new(),
@@ -56,6 +78,10 @@ impl Default for AstroMonitorApp {
             progress_text,
             last_log_copy_time: None,
             last_alert_copy_time: None,
+
+            cached_battery_tooltip,
+            cached_temp_tooltip,
+            cached_star_tooltip,
 
             // Default input values
             input_subsystem: InputSubsystem::Power,
@@ -327,10 +353,7 @@ impl eframe::App for AstroMonitorApp {
                         );
                         if self.input_battery < self.monitor.min_battery_level {
                             ui.label(egui::RichText::new("⚠").color(egui::Color32::RED))
-                                .on_hover_text(format!(
-                                    "Values below {:.0}% will trigger a Critical alert",
-                                    self.monitor.min_battery_level
-                                ));
+                                .on_hover_text(&self.cached_battery_tooltip);
                         }
                     });
                 }
@@ -344,10 +367,7 @@ impl eframe::App for AstroMonitorApp {
                         );
                         if self.input_temp > self.monitor.max_temp_celsius {
                             ui.label(egui::RichText::new("⚠").color(egui::Color32::YELLOW))
-                                .on_hover_text(format!(
-                                    "Values above {:.0}°C will trigger a Warning alert",
-                                    self.monitor.max_temp_celsius
-                                ));
+                                .on_hover_text(&self.cached_temp_tooltip);
                         }
                     });
                 }
@@ -379,10 +399,7 @@ impl eframe::App for AstroMonitorApp {
                         );
                         if self.input_confidence < self.monitor.min_star_confidence {
                             ui.label(egui::RichText::new("ℹ").color(egui::Color32::LIGHT_BLUE))
-                                .on_hover_text(format!(
-                                    "Values below {:.2} will trigger an Info alert",
-                                    self.monitor.min_star_confidence
-                                ));
+                                .on_hover_text(&self.cached_star_tooltip);
                         }
                         ui.label("Target:");
                         ui.add(
