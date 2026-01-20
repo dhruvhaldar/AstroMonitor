@@ -101,7 +101,27 @@ impl eframe::App for AstroMonitorApp {
 
         // GUI Layout
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Astro Monitor Dashboard");
+            ui.horizontal(|ui| {
+                ui.heading("Astro Monitor Dashboard");
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let (status_text, status_color) =
+                        if self.alerts.iter().any(|(l, _)| *l == AlertLevel::Critical) {
+                            ("SYSTEM CRITICAL 🔴", egui::Color32::RED)
+                        } else if self.alerts.iter().any(|(l, _)| *l == AlertLevel::Warning) {
+                            ("System Warning ⚠️", egui::Color32::YELLOW)
+                        } else if self.alerts.iter().any(|(l, _)| *l == AlertLevel::Info) {
+                            ("System Info ℹ", egui::Color32::LIGHT_BLUE)
+                        } else {
+                            ("System Nominal 🟢", egui::Color32::GREEN)
+                        };
+                    ui.label(
+                        egui::RichText::new(status_text)
+                            .color(status_color)
+                            .strong(),
+                    )
+                    .on_hover_text("Aggregate system status based on active alerts");
+                });
+            });
 
             // Control Bar
             ui.horizontal(|ui| {
@@ -385,7 +405,13 @@ impl eframe::App for AstroMonitorApp {
             {
                 let packet = self.create_manual_packet();
                 let result = Parser::parse(&packet);
-                Self::process_result(&mut self.logs, &mut self.alerts, &self.monitor, result, None);
+                Self::process_result(
+                    &mut self.logs,
+                    &mut self.alerts,
+                    &self.monitor,
+                    result,
+                    None,
+                );
             }
         });
     }
@@ -405,7 +431,7 @@ impl AstroMonitorApp {
 
     fn add_to_log(logs: &mut VecDeque<String>, args: std::fmt::Arguments<'_>) {
         let mut buffer = if logs.len() >= MAX_LOGS {
-            logs.pop_front().unwrap_or_else(String::new)
+            logs.pop_front().unwrap_or_default()
         } else {
             String::new()
         };
