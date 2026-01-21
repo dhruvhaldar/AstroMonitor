@@ -5,3 +5,7 @@
 ## 2024-05-24 - Status Aggregation
 **Learning:** Users need a high-level "at a glance" system health indicator, especially when logs and alerts are scrollable and might hide critical information off-screen.
 **Action:** Implement a prominent Status Indicator in the header that aggregates the highest severity of all active alerts. This connects individual events to the overall system state and provides immediate feedback for actions (like clearing alerts).
+
+## 2025-10-26 - Action Confirmation Feedback
+**Learning:** For actions that trigger background processes (like manual data injection) where the primary output is a log entry that might be missed, users need immediate confirmation on the control itself.
+**Action:** Implement temporary state (timestamp + status) to briefly transform the trigger button into a success/error indicator (e.g., "Injected! ✔") before reverting to its original state.

@@ -38,6 +38,7 @@ pub struct AstroMonitorApp {
     // Feedback state
     last_log_copy_time: Option<Instant>,
     last_alert_copy_time: Option<Instant>,
+    last_injection_feedback: Option<(Instant, bool)>, // (time, success)
 
     // Cached Tooltips (Bolt Optimization)
     // Note: These must be updated if `monitor` thresholds are changed at runtime.
@@ -78,6 +79,7 @@ impl Default for AstroMonitorApp {
             progress_text,
             last_log_copy_time: None,
             last_alert_copy_time: None,
+            last_injection_feedback: None,
 
             cached_battery_tooltip,
             cached_temp_tooltip,
@@ -412,8 +414,22 @@ impl eframe::App for AstroMonitorApp {
                 }
             }
 
+            let (label, color) = if let Some((time, success)) = self.last_injection_feedback {
+                if time.elapsed() < Duration::from_secs(2) {
+                    if success {
+                        ("Injected! ✔", egui::Color32::GREEN)
+                    } else {
+                        ("Error! ❌", egui::Color32::RED)
+                    }
+                } else {
+                    ("Inject Packet", ui.visuals().text_color())
+                }
+            } else {
+                ("Inject Packet", ui.visuals().text_color())
+            };
+
             if ui
-                .button("Inject Packet")
+                .button(egui::RichText::new(label).color(color))
                 .on_hover_text(
                     "Construct and process a telemetry packet with the above values (Ctrl+Enter)",
                 )
@@ -422,6 +438,7 @@ impl eframe::App for AstroMonitorApp {
             {
                 let packet = self.create_manual_packet();
                 let result = Parser::parse(&packet);
+                let success = result.is_ok();
                 Self::process_result(
                     &mut self.logs,
                     &mut self.alerts,
@@ -429,6 +446,8 @@ impl eframe::App for AstroMonitorApp {
                     result,
                     None,
                 );
+                self.last_injection_feedback = Some((Instant::now(), success));
+                ui.ctx().request_repaint_after(Duration::from_secs(2));
             }
         });
     }
