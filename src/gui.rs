@@ -5,6 +5,7 @@ use std::fmt::Write;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const MAX_LOGS: usize = 1000;
+const MAX_ALERTS: usize = 1000;
 
 #[derive(PartialEq)]
 enum InputSubsystem {
@@ -18,7 +19,8 @@ pub struct AstroMonitorApp {
     packets: Vec<Vec<u8>>,
     packet_index: usize,
     logs: VecDeque<String>,
-    alerts: Vec<(AlertLevel, String)>,
+    alerts: VecDeque<(AlertLevel, String)>,
+    alert_counts: [usize; 3], // [Info, Warning, Critical]
     last_update: Instant,
     simulation_delay_ms: u64,
     paused: bool,
@@ -71,7 +73,8 @@ impl Default for AstroMonitorApp {
             packets,
             packet_index: 0,
             logs: VecDeque::new(),
-            alerts: Vec::new(),
+            alerts: VecDeque::new(),
+            alert_counts: [0; 3],
             last_update: Instant::now(),
             simulation_delay_ms: 1000,
             paused: false,
@@ -110,6 +113,7 @@ impl eframe::App for AstroMonitorApp {
                 Self::process_result(
                     &mut self.logs,
                     &mut self.alerts,
+                    &mut self.alert_counts,
                     &self.monitor,
                     result,
                     Some(self.packet_index + 1),
@@ -130,12 +134,13 @@ impl eframe::App for AstroMonitorApp {
             ui.horizontal(|ui| {
                 ui.heading("Astro Monitor Dashboard");
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    // Bolt Optimization: O(1) status check using maintained counts
                     let (status_text, status_color) =
-                        if self.alerts.iter().any(|(l, _)| *l == AlertLevel::Critical) {
+                        if self.alert_counts[2] > 0 {
                             ("SYSTEM CRITICAL 🔴", egui::Color32::RED)
-                        } else if self.alerts.iter().any(|(l, _)| *l == AlertLevel::Warning) {
+                        } else if self.alert_counts[1] > 0 {
                             ("System Warning ⚠️", egui::Color32::YELLOW)
-                        } else if self.alerts.iter().any(|(l, _)| *l == AlertLevel::Info) {
+                        } else if self.alert_counts[0] > 0 {
                             ("System Info ℹ", egui::Color32::LIGHT_BLUE)
                         } else {
                             ("System Nominal 🟢", egui::Color32::GREEN)
@@ -176,6 +181,7 @@ impl eframe::App for AstroMonitorApp {
                     self.update_progress_text();
                     self.logs.clear();
                     self.alerts.clear();
+                    self.alert_counts = [0; 3];
                     self.last_update = Instant::now();
                     self.paused = false;
                 }
@@ -251,6 +257,7 @@ impl eframe::App for AstroMonitorApp {
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             if ui.button("🗑").on_hover_text("Clear alerts").clicked() {
                                 self.alerts.clear();
+                                self.alert_counts = [0; 3];
                             }
                             let (icon, tooltip) = if let Some(_t) = self
                                 .last_alert_copy_time
@@ -425,6 +432,7 @@ impl eframe::App for AstroMonitorApp {
                 Self::process_result(
                     &mut self.logs,
                     &mut self.alerts,
+                    &mut self.alert_counts,
                     &self.monitor,
                     result,
                     None,
@@ -458,10 +466,19 @@ impl AstroMonitorApp {
         logs.push_back(buffer);
     }
 
+    fn alert_level_index(level: AlertLevel) -> usize {
+        match level {
+            AlertLevel::Info => 0,
+            AlertLevel::Warning => 1,
+            AlertLevel::Critical => 2,
+        }
+    }
+
     // Bolt Optimization: Static processing function to allow split borrowing
     fn process_result(
         logs: &mut VecDeque<String>,
-        alerts: &mut Vec<(AlertLevel, String)>,
+        alerts: &mut VecDeque<(AlertLevel, String)>,
+        alert_counts: &mut [usize; 3],
         monitor: &Monitor,
         result: Result<TelemetryPacket<'_>, ParserError>,
         index: Option<usize>,
@@ -495,17 +512,40 @@ impl AstroMonitorApp {
                         logs,
                         format_args!("*** ALERT: [{:?}] {} ***", event.level, event.condition),
                     );
+
+                    // Bolt Optimization: Recycle alert strings to avoid allocation
+                    let (_level, mut text) = if alerts.len() >= MAX_ALERTS {
+                        let (l, t) = alerts.pop_front().unwrap_or((AlertLevel::Info, String::new()));
+
+                        // Maintain counts for removed item
+                        let idx = Self::alert_level_index(l);
+                        if alert_counts[idx] > 0 {
+                            alert_counts[idx] -= 1;
+                        }
+                        (l, t)
+                    } else {
+                        (AlertLevel::Info, String::new())
+                    };
+
                     // Bolt Optimization: Pre-format display text to avoid allocation in render loop
                     let icon = match event.level {
                         AlertLevel::Critical => "🔴",
                         AlertLevel::Warning => "⚠️",
                         AlertLevel::Info => "ℹ️",
                     };
-                    let display_text = format!(
+
+                    text.clear();
+                    let _ = write!(
+                        text,
                         "{} [{:?}] {} (Time: {})",
                         icon, event.level, event.condition, event.timestamp
                     );
-                    alerts.push((event.level, display_text));
+
+                    alerts.push_back((event.level, text));
+
+                    // Maintain counts for added item
+                    let idx = Self::alert_level_index(event.level);
+                    alert_counts[idx] += 1;
                 }
             }
             Err(e) => {
