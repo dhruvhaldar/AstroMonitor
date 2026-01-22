@@ -5,6 +5,7 @@ use std::fmt::Write;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const MAX_LOGS: usize = 1000;
+const MAX_ALERTS: usize = 1000;
 
 #[derive(PartialEq)]
 enum InputSubsystem {
@@ -18,7 +19,8 @@ pub struct AstroMonitorApp {
     packets: Vec<Vec<u8>>,
     packet_index: usize,
     logs: VecDeque<String>,
-    alerts: Vec<(AlertLevel, String)>,
+    alerts: VecDeque<(AlertLevel, String)>,
+    alert_counts: [usize; 3], // [Info, Warning, Critical]
     last_update: Instant,
     simulation_delay_ms: u64,
     paused: bool,
@@ -71,7 +73,8 @@ impl Default for AstroMonitorApp {
             packets,
             packet_index: 0,
             logs: VecDeque::new(),
-            alerts: Vec::new(),
+            alerts: VecDeque::new(),
+            alert_counts: [0, 0, 0],
             last_update: Instant::now(),
             simulation_delay_ms: 1000,
             paused: false,
@@ -110,6 +113,7 @@ impl eframe::App for AstroMonitorApp {
                 Self::process_result(
                     &mut self.logs,
                     &mut self.alerts,
+                    &mut self.alert_counts,
                     &self.monitor,
                     result,
                     Some(self.packet_index + 1),
@@ -130,16 +134,16 @@ impl eframe::App for AstroMonitorApp {
             ui.horizontal(|ui| {
                 ui.heading("Astro Monitor Dashboard");
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    let (status_text, status_color) =
-                        if self.alerts.iter().any(|(l, _)| *l == AlertLevel::Critical) {
-                            ("SYSTEM CRITICAL 🔴", egui::Color32::RED)
-                        } else if self.alerts.iter().any(|(l, _)| *l == AlertLevel::Warning) {
-                            ("System Warning ⚠️", egui::Color32::YELLOW)
-                        } else if self.alerts.iter().any(|(l, _)| *l == AlertLevel::Info) {
-                            ("System Info ℹ", egui::Color32::LIGHT_BLUE)
-                        } else {
-                            ("System Nominal 🟢", egui::Color32::GREEN)
-                        };
+                    // Bolt Optimization: Use cached alert counts for O(1) status check
+                    let (status_text, status_color) = if self.alert_counts[2] > 0 {
+                        ("SYSTEM CRITICAL 🔴", egui::Color32::RED)
+                    } else if self.alert_counts[1] > 0 {
+                        ("System Warning ⚠️", egui::Color32::YELLOW)
+                    } else if self.alert_counts[0] > 0 {
+                        ("System Info ℹ", egui::Color32::LIGHT_BLUE)
+                    } else {
+                        ("System Nominal 🟢", egui::Color32::GREEN)
+                    };
                     ui.label(
                         egui::RichText::new(status_text)
                             .color(status_color)
@@ -176,6 +180,7 @@ impl eframe::App for AstroMonitorApp {
                     self.update_progress_text();
                     self.logs.clear();
                     self.alerts.clear();
+                    self.alert_counts = [0, 0, 0];
                     self.last_update = Instant::now();
                     self.paused = false;
                 }
@@ -251,6 +256,7 @@ impl eframe::App for AstroMonitorApp {
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             if ui.button("🗑").on_hover_text("Clear alerts").clicked() {
                                 self.alerts.clear();
+                                self.alert_counts = [0, 0, 0];
                             }
                             let (icon, tooltip) = if let Some(_t) = self
                                 .last_alert_copy_time
@@ -425,6 +431,7 @@ impl eframe::App for AstroMonitorApp {
                 Self::process_result(
                     &mut self.logs,
                     &mut self.alerts,
+                    &mut self.alert_counts,
                     &self.monitor,
                     result,
                     None,
@@ -461,7 +468,8 @@ impl AstroMonitorApp {
     // Bolt Optimization: Static processing function to allow split borrowing
     fn process_result(
         logs: &mut VecDeque<String>,
-        alerts: &mut Vec<(AlertLevel, String)>,
+        alerts: &mut VecDeque<(AlertLevel, String)>,
+        alert_counts: &mut [usize; 3],
         monitor: &Monitor,
         result: Result<TelemetryPacket<'_>, ParserError>,
         index: Option<usize>,
@@ -495,17 +503,44 @@ impl AstroMonitorApp {
                         logs,
                         format_args!("*** ALERT: [{:?}] {} ***", event.level, event.condition),
                     );
+
+                    // Bolt Optimization: Recycle alert string buffer if at capacity
+                    let mut buffer = if alerts.len() >= MAX_ALERTS {
+                        let (old_level, old_string) = alerts.pop_front().unwrap();
+                        // Decrement count for removed alert
+                        let old_idx = match old_level {
+                            AlertLevel::Info => 0,
+                            AlertLevel::Warning => 1,
+                            AlertLevel::Critical => 2,
+                        };
+                        if alert_counts[old_idx] > 0 {
+                            alert_counts[old_idx] -= 1;
+                        }
+                        old_string
+                    } else {
+                        String::new()
+                    };
+                    buffer.clear();
+
                     // Bolt Optimization: Pre-format display text to avoid allocation in render loop
                     let icon = match event.level {
                         AlertLevel::Critical => "🔴",
                         AlertLevel::Warning => "⚠️",
                         AlertLevel::Info => "ℹ️",
                     };
-                    let display_text = format!(
-                        "{} [{:?}] {} (Time: {})",
-                        icon, event.level, event.condition, event.timestamp
-                    );
-                    alerts.push((event.level, display_text));
+
+                    // Use write! to recycle buffer
+                    let _ = write!(buffer, "{} [{:?}] {} (Time: {})", icon, event.level, event.condition, event.timestamp);
+
+                    // Update counts
+                    let new_idx = match event.level {
+                        AlertLevel::Info => 0,
+                        AlertLevel::Warning => 1,
+                        AlertLevel::Critical => 2,
+                    };
+                    alert_counts[new_idx] += 1;
+
+                    alerts.push_back((event.level, buffer));
                 }
             }
             Err(e) => {
