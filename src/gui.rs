@@ -5,6 +5,7 @@ use std::fmt::Write;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const MAX_LOGS: usize = 1000;
+const MAX_ALERTS: usize = 1000;
 
 #[derive(PartialEq)]
 enum InputSubsystem {
@@ -18,7 +19,8 @@ pub struct AstroMonitorApp {
     packets: Vec<Vec<u8>>,
     packet_index: usize,
     logs: VecDeque<String>,
-    alerts: Vec<(AlertLevel, String)>,
+    alerts: VecDeque<(AlertLevel, String)>,
+    alert_counts: [usize; 3], // [Info, Warning, Critical]
     last_update: Instant,
     simulation_delay_ms: u64,
     paused: bool,
@@ -71,7 +73,8 @@ impl Default for AstroMonitorApp {
             packets,
             packet_index: 0,
             logs: VecDeque::new(),
-            alerts: Vec::new(),
+            alerts: VecDeque::new(),
+            alert_counts: [0, 0, 0],
             last_update: Instant::now(),
             simulation_delay_ms: 1000,
             paused: false,
@@ -110,6 +113,7 @@ impl eframe::App for AstroMonitorApp {
                 Self::process_result(
                     &mut self.logs,
                     &mut self.alerts,
+                    &mut self.alert_counts,
                     &self.monitor,
                     result,
                     Some(self.packet_index + 1),
@@ -131,11 +135,11 @@ impl eframe::App for AstroMonitorApp {
                 ui.heading("Astro Monitor Dashboard");
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     let (status_text, status_color) =
-                        if self.alerts.iter().any(|(l, _)| *l == AlertLevel::Critical) {
+                        if self.alert_counts[AlertLevel::Critical as usize] > 0 {
                             ("SYSTEM CRITICAL 🔴", egui::Color32::RED)
-                        } else if self.alerts.iter().any(|(l, _)| *l == AlertLevel::Warning) {
+                        } else if self.alert_counts[AlertLevel::Warning as usize] > 0 {
                             ("System Warning ⚠️", egui::Color32::YELLOW)
-                        } else if self.alerts.iter().any(|(l, _)| *l == AlertLevel::Info) {
+                        } else if self.alert_counts[AlertLevel::Info as usize] > 0 {
                             ("System Info ℹ", egui::Color32::LIGHT_BLUE)
                         } else {
                             ("System Nominal 🟢", egui::Color32::GREEN)
@@ -251,6 +255,7 @@ impl eframe::App for AstroMonitorApp {
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             if ui.button("🗑").on_hover_text("Clear alerts").clicked() {
                                 self.alerts.clear();
+                                self.alert_counts = [0, 0, 0];
                             }
                             let (icon, tooltip) = if let Some(_t) = self
                                 .last_alert_copy_time
@@ -425,6 +430,7 @@ impl eframe::App for AstroMonitorApp {
                 Self::process_result(
                     &mut self.logs,
                     &mut self.alerts,
+                    &mut self.alert_counts,
                     &self.monitor,
                     result,
                     None,
@@ -461,7 +467,8 @@ impl AstroMonitorApp {
     // Bolt Optimization: Static processing function to allow split borrowing
     fn process_result(
         logs: &mut VecDeque<String>,
-        alerts: &mut Vec<(AlertLevel, String)>,
+        alerts: &mut VecDeque<(AlertLevel, String)>,
+        alert_counts: &mut [usize; 3],
         monitor: &Monitor,
         result: Result<TelemetryPacket<'_>, ParserError>,
         index: Option<usize>,
@@ -501,11 +508,25 @@ impl AstroMonitorApp {
                         AlertLevel::Warning => "⚠️",
                         AlertLevel::Info => "ℹ️",
                     };
-                    let display_text = format!(
+
+                    alert_counts[event.level as usize] += 1;
+
+                    let mut display_text = if alerts.len() >= MAX_ALERTS {
+                        let (old_level, mut s) = alerts.pop_front().unwrap();
+                        alert_counts[old_level as usize] =
+                            alert_counts[old_level as usize].saturating_sub(1);
+                        s.clear();
+                        s
+                    } else {
+                        String::new()
+                    };
+
+                    let _ = write!(
+                        display_text,
                         "{} [{:?}] {} (Time: {})",
                         icon, event.level, event.condition, event.timestamp
                     );
-                    alerts.push((event.level, display_text));
+                    alerts.push_back((event.level, display_text));
                 }
             }
             Err(e) => {
