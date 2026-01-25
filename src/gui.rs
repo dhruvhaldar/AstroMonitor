@@ -38,6 +38,7 @@ pub struct AstroMonitorApp {
     // Feedback state
     last_log_copy_time: Option<Instant>,
     last_alert_copy_time: Option<Instant>,
+    last_injection_time: Option<Instant>,
 
     // Cached Tooltips (Bolt Optimization)
     // Note: These must be updated if `monitor` thresholds are changed at runtime.
@@ -78,6 +79,7 @@ impl Default for AstroMonitorApp {
             progress_text,
             last_log_copy_time: None,
             last_alert_copy_time: None,
+            last_injection_time: None,
 
             cached_battery_tooltip,
             cached_temp_tooltip,
@@ -412,11 +414,21 @@ impl eframe::App for AstroMonitorApp {
                 }
             }
 
-            if ui
-                .button("Inject Packet")
-                .on_hover_text(
+            let (button_text, button_tooltip) = if let Some(_t) = self
+                .last_injection_time
+                .filter(|t| t.elapsed().as_secs() < 2)
+            {
+                ("✔ Sent!", "Packet injected successfully")
+            } else {
+                (
+                    "Inject Packet",
                     "Construct and process a telemetry packet with the above values (Ctrl+Enter)",
                 )
+            };
+
+            if ui
+                .button(button_text)
+                .on_hover_text(button_tooltip)
                 .clicked()
                 || (ui.input(|i| i.modifiers.command && i.key_pressed(egui::Key::Enter)))
             {
@@ -429,6 +441,8 @@ impl eframe::App for AstroMonitorApp {
                     result,
                     None,
                 );
+                self.last_injection_time = Some(Instant::now());
+                ui.ctx().request_repaint_after(Duration::from_secs(2));
             }
         });
     }
