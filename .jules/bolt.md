@@ -13,3 +13,7 @@
 ## 2024-11-21 - [Log String Recycling]
 **Learning:** High-frequency logging in applications with circular buffers (like `VecDeque<String>`) causes frequent heap allocations and deallocations as messages are pushed and popped.
 **Action:** Implement object pooling for log strings: when the buffer is full, pop the old string, clear it, and write the new message into it (using `std::fmt::write`) instead of allocating a new `String`.
+
+## 2024-11-25 - [O(1) Status Checks]
+**Learning:** Iterating over large collections (e.g., `alerts.iter().any(...)`) in the render loop to determine global system status creates unnecessary O(N) overhead every frame.
+**Action:** Maintain a parallel "counts" array (e.g., `[usize; 3]`) that tracks the number of items per category (Critical, Warning, Info). Update this count only on insertion/removal, enabling O(1) status checks in the render loop.
