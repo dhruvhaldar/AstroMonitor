@@ -151,7 +151,9 @@ impl eframe::App for AstroMonitorApp {
                             .color(status_color)
                             .strong(),
                     )
-                    .on_hover_text("Aggregate system status based on active alerts");
+                    .on_hover_ui(|ui| {
+                        ui.label("Aggregate system status based on active alerts");
+                    });
                 });
             });
 
@@ -163,7 +165,9 @@ impl eframe::App for AstroMonitorApp {
                     } else {
                         "⏸ Pause"
                     })
-                    .on_hover_text("Pause or resume the simulation updates. (Space)")
+                    .on_hover_ui(|ui| {
+                        ui.label("Pause or resume the simulation updates. (Space)");
+                    })
                     .clicked()
                 {
                     self.paused = !self.paused;
@@ -175,7 +179,9 @@ impl eframe::App for AstroMonitorApp {
                 }
                 if ui
                     .button("↻ Restart")
-                    .on_hover_text("⚠ Clears all logs, alerts, and restarts the simulation.")
+                    .on_hover_ui(|ui| {
+                        ui.label("⚠ Clears all logs, alerts, and restarts the simulation.");
+                    })
                     .clicked()
                 {
                     self.packet_index = 0;
@@ -189,7 +195,9 @@ impl eframe::App for AstroMonitorApp {
                 ui.add(
                     egui::Slider::new(&mut self.simulation_delay_ms, 100..=2000).text("Delay (ms)"),
                 )
-                .on_hover_text("Adjust simulation speed (delay between packets in milliseconds)");
+                .on_hover_ui(|ui| {
+                    ui.label("Adjust simulation speed (delay between packets in milliseconds)");
+                });
 
                 let progress = self.packet_index as f32 / self.packets.len() as f32;
                 // Bolt Optimization: Use cached progress text to avoid formatting/allocation every frame
@@ -209,7 +217,9 @@ impl eframe::App for AstroMonitorApp {
                     ui.horizontal(|ui| {
                         ui.heading("System Logs");
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            if ui.button("🗑").on_hover_text("Clear logs").clicked() {
+                            if ui.button("🗑").on_hover_ui(|ui| {
+                                ui.label("Clear logs");
+                            }).clicked() {
                                 self.logs.clear();
                             }
                             let (icon, tooltip) = if let Some(_t) = self
@@ -220,7 +230,9 @@ impl eframe::App for AstroMonitorApp {
                             } else {
                                 ("📋", "Copy logs to clipboard")
                             };
-                            if ui.button(icon).on_hover_text(tooltip).clicked() {
+                            if ui.button(icon).on_hover_ui(|ui| {
+                                ui.label(tooltip);
+                            }).clicked() {
                                 let all_logs =
                                     self.logs.iter().cloned().collect::<Vec<_>>().join("\n");
                                 ui.output_mut(|o| o.copied_text = all_logs);
@@ -245,7 +257,9 @@ impl eframe::App for AstroMonitorApp {
                                 for i in row_range {
                                     // Ensure fixed height by disabling wrap/truncating
                                     ui.add(egui::Label::new(&self.logs[i]).truncate())
-                                        .on_hover_text(&self.logs[i]);
+                                        .on_hover_ui(|ui| {
+                                            ui.label(&self.logs[i]);
+                                        });
                                 }
                             });
                     }
@@ -256,7 +270,9 @@ impl eframe::App for AstroMonitorApp {
                     ui.horizontal(|ui| {
                         ui.heading("Active Alerts");
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            if ui.button("🗑").on_hover_text("Clear alerts").clicked() {
+                            if ui.button("🗑").on_hover_ui(|ui| {
+                                ui.label("Clear alerts");
+                            }).clicked() {
                                 self.alerts.clear();
                                 self.alert_counts = [0, 0, 0];
                             }
@@ -268,7 +284,9 @@ impl eframe::App for AstroMonitorApp {
                             } else {
                                 ("📋", "Copy alerts to clipboard")
                             };
-                            if ui.button(icon).on_hover_text(tooltip).clicked() {
+                            if ui.button(icon).on_hover_ui(|ui| {
+                                ui.label(tooltip);
+                            }).clicked() {
                                 let all_alerts = self
                                     .alerts
                                     .iter()
@@ -307,7 +325,9 @@ impl eframe::App for AstroMonitorApp {
                                     ui.style_mut().visuals.override_text_color = Some(color);
                                     // Ensure fixed height by disabling wrap/truncating
                                     ui.add(egui::Label::new(text).truncate())
-                                        .on_hover_text(text);
+                                        .on_hover_ui(|ui| {
+                                            ui.label(text);
+                                        });
                                     // Reset color for safety (though loop re-sets it)
                                     ui.style_mut().visuals.override_text_color = None;
                                 }
@@ -322,19 +342,25 @@ impl eframe::App for AstroMonitorApp {
             ui.heading("Manual Packet Injection");
             ui.horizontal(|ui| {
                 ui.radio_value(&mut self.input_subsystem, InputSubsystem::Power, "⚡ Power")
-                    .on_hover_text("Configure Voltage, Current, and Battery parameters");
+                    .on_hover_ui(|ui| {
+                        ui.label("Configure Voltage, Current, and Battery parameters");
+                    });
                 ui.radio_value(
                     &mut self.input_subsystem,
                     InputSubsystem::Thermal,
                     "🌡 Thermal",
                 )
-                .on_hover_text("Configure Temperature sensor parameters");
+                .on_hover_ui(|ui| {
+                    ui.label("Configure Temperature sensor parameters");
+                });
                 ui.radio_value(
                     &mut self.input_subsystem,
                     InputSubsystem::StarTracker,
                     "🔭 Star Tracker",
                 )
-                .on_hover_text("Configure RA, Dec, Confidence, and Target identification");
+                .on_hover_ui(|ui| {
+                    ui.label("Configure RA, Dec, Confidence, and Target identification");
+                });
             });
 
             match self.input_subsystem {
@@ -361,7 +387,9 @@ impl eframe::App for AstroMonitorApp {
                         );
                         if self.input_battery < self.monitor.min_battery_level {
                             ui.label(egui::RichText::new("⚠").color(egui::Color32::RED))
-                                .on_hover_text(&self.cached_battery_tooltip);
+                                .on_hover_ui(|ui| {
+                                    ui.label(&self.cached_battery_tooltip);
+                                });
                         }
                     });
                 }
@@ -375,7 +403,9 @@ impl eframe::App for AstroMonitorApp {
                         );
                         if self.input_temp > self.monitor.max_temp_celsius {
                             ui.label(egui::RichText::new("⚠").color(egui::Color32::YELLOW))
-                                .on_hover_text(&self.cached_temp_tooltip);
+                                .on_hover_ui(|ui| {
+                                    ui.label(&self.cached_temp_tooltip);
+                                });
                         }
                     });
                 }
@@ -407,7 +437,9 @@ impl eframe::App for AstroMonitorApp {
                         );
                         if self.input_confidence < self.monitor.min_star_confidence {
                             ui.label(egui::RichText::new("ℹ").color(egui::Color32::LIGHT_BLUE))
-                                .on_hover_text(&self.cached_star_tooltip);
+                                .on_hover_ui(|ui| {
+                                    ui.label(&self.cached_star_tooltip);
+                                });
                         }
                         ui.label("Target:");
                         ui.add(
@@ -434,7 +466,9 @@ impl eframe::App for AstroMonitorApp {
 
             if ui
                 .button(button_text)
-                .on_hover_text(button_tooltip)
+                .on_hover_ui(|ui| {
+                    ui.label(button_tooltip);
+                })
                 .clicked()
                 || (ui.input(|i| i.modifiers.command && i.key_pressed(egui::Key::Enter)))
             {
