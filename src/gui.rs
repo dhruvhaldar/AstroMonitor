@@ -491,20 +491,25 @@ impl AstroMonitorApp {
         // Bolt Optimization: Combined log message to reduce string allocations and VecDeque operations by 50%
         match result {
             Ok(packet) => {
+                let ts = packet.timestamp;
+                let s = ts % 60;
+                let m = (ts / 60) % 60;
+                let h = (ts / 3600) % 24;
+
                 if let Some(idx) = index {
                     Self::add_to_log(
                         logs,
                         format_args!(
-                            "Packet {}: Parsed {:?} - {:?}",
-                            idx, packet.subsystem, packet.payload
+                            "[{:02}:{:02}:{:02}] Packet {}: Parsed {:?} - {:?}",
+                            h, m, s, idx, packet.subsystem, packet.payload
                         ),
                     );
                 } else {
                     Self::add_to_log(
                         logs,
                         format_args!(
-                            "Manual Packet: Parsed {:?} - {:?}",
-                            packet.subsystem, packet.payload
+                            "[{:02}:{:02}:{:02}] Manual Packet: Parsed {:?} - {:?}",
+                            h, m, s, packet.subsystem, packet.payload
                         ),
                     );
                 }
@@ -548,8 +553,8 @@ impl AstroMonitorApp {
                     // Write to recycled buffer
                     let _ = write!(
                         buffer,
-                        "{} [{:?}] {} (Time: {})",
-                        icon, event.level, event.condition, event.timestamp
+                        "{} [{:?}] {} (Time: {:02}:{:02}:{:02})",
+                        icon, event.level, event.condition, h, m, s
                     );
 
                     let new_idx = match event.level {
@@ -606,5 +611,71 @@ impl AstroMonitorApp {
             }
         }
         packet
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::{Subsystem, TelemetryPayload, PowerData};
+
+    #[test]
+    fn test_process_result_formatting() {
+        let mut logs = VecDeque::new();
+        let mut alerts = VecDeque::new();
+        let mut alert_counts = [0, 0, 0];
+        let monitor = Monitor::default();
+
+        // 1627849200 = 20:20:00 UTC
+        let timestamp = 1627849200;
+        let packet = TelemetryPacket {
+            timestamp,
+            subsystem: Subsystem::Power,
+            payload: TelemetryPayload::Power(PowerData {
+                voltage: 28.0,
+                current: 2.5,
+                battery_level: 95.0,
+            }),
+        };
+
+        AstroMonitorApp::process_result(
+            &mut logs,
+            &mut alerts,
+            &mut alert_counts,
+            &monitor,
+            Ok(packet),
+            Some(1),
+        );
+
+        assert_eq!(logs.len(), 1);
+        // We expect "[20:20:00]" to be at the start
+        assert!(logs[0].starts_with("[20:20:00]"));
+        assert!(logs[0].contains("Packet 1: Parsed"));
+
+        // Now test alert formatting (low battery)
+         let packet_alert = TelemetryPacket {
+            timestamp,
+            subsystem: Subsystem::Power,
+            payload: TelemetryPayload::Power(PowerData {
+                voltage: 24.0,
+                current: 1.0,
+                battery_level: 10.0, // Low battery
+            }),
+        };
+
+        AstroMonitorApp::process_result(
+            &mut logs,
+            &mut alerts,
+            &mut alert_counts,
+            &monitor,
+            Ok(packet_alert),
+            Some(2),
+        );
+
+        // Alert should be generated
+        assert_eq!(alerts.len(), 1);
+        let (_, alert_msg) = &alerts[0];
+        // Alert message should contain formatted time
+        assert!(alert_msg.contains("(Time: 20:20:00)"));
     }
 }
