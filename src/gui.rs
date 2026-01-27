@@ -233,8 +233,12 @@ impl eframe::App for AstroMonitorApp {
                             if ui.button(icon).on_hover_ui(|ui| {
                                 ui.label(tooltip);
                             }).clicked() {
-                                let all_logs =
-                                    self.logs.iter().cloned().collect::<Vec<_>>().join("\n");
+                                // Bolt Optimization: Avoid intermediate Vec allocation and String cloning
+                                let mut all_logs = String::with_capacity(self.logs.len() * 80);
+                                for log in &self.logs {
+                                    all_logs.push_str(log);
+                                    all_logs.push('\n');
+                                }
                                 ui.output_mut(|o| o.copied_text = all_logs);
                                 self.last_log_copy_time = Some(Instant::now());
                                 ui.ctx().request_repaint_after(Duration::from_secs(2));
@@ -287,12 +291,12 @@ impl eframe::App for AstroMonitorApp {
                             if ui.button(icon).on_hover_ui(|ui| {
                                 ui.label(tooltip);
                             }).clicked() {
-                                let all_alerts = self
-                                    .alerts
-                                    .iter()
-                                    .map(|(_, text)| text.clone())
-                                    .collect::<Vec<_>>()
-                                    .join("\n");
+                                // Bolt Optimization: Avoid intermediate Vec allocation and String cloning
+                                let mut all_alerts = String::with_capacity(self.alerts.len() * 80);
+                                for (_, text) in &self.alerts {
+                                    all_alerts.push_str(text);
+                                    all_alerts.push('\n');
+                                }
                                 ui.output_mut(|o| o.copied_text = all_alerts);
                                 self.last_alert_copy_time = Some(Instant::now());
                                 ui.ctx().request_repaint_after(Duration::from_secs(2));

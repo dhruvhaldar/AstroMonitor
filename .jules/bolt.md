@@ -17,3 +17,11 @@
 ## 2024-11-25 - [O(1) Status Checks]
 **Learning:** Iterating over large collections (e.g., `alerts.iter().any(...)`) in the render loop to determine global system status creates unnecessary O(N) overhead every frame.
 **Action:** Maintain a parallel "counts" array (e.g., `[usize; 3]`) that tracks the number of items per category (Critical, Warning, Info). Update this count only on insertion/removal, enabling O(1) status checks in the render loop.
+
+## 2024-11-26 - [Style Mutation in Loops]
+**Learning:** Modifying `ui.style_mut()` inside a loop (even a virtualized one) forces a clone of the `Style` structure (Copy-on-Write) for the child UI. This adds unnecessary allocation overhead per frame.
+**Action:** Use widget-specific styling methods (e.g., `Label::text_color`) instead of mutating the global or context style, to avoid this context-level mutation overhead.
+
+## 2024-11-26 - [Label Coloring Constraints]
+**Learning:** `egui::Label` (v0.29) lacks a zero-allocation color builder method. Using `RichText` forces string allocation/cloning. Therefore, modifying `ui.style_mut()` remains the most efficient way to color text in hot loops without string allocation, despite the `Style` clone overhead.
+**Action:** Stick to `ui.style_mut()` overrides for coloring labels in performance-critical loops where `RichText` allocation is unacceptable.
