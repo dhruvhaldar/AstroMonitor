@@ -9,3 +9,7 @@
 ## 2024-05-25 - Transient Action Feedback
 **Learning:** Transient visual feedback (e.g., swapping button text to "✔ Sent!") is essential for confirming manual actions in data-heavy interfaces where the result (a log entry) might be visually noisy or lost.
 **Action:** For all manual injection or submission actions, implement a temporary state change (approx 2s) on the trigger element to confirm success without requiring the user to scan logs.
+
+## 2024-05-26 - Zebra Striping for Density
+**Learning:** In data-heavy lists (logs/alerts), pure text becomes hard to scan. Zebra striping (alternating background colors) significantly improves readability and row tracking without adding visual clutter.
+**Action:** For all virtualized lists (`show_rows`), implement a conditional background fill (`rect_filled`) for odd-indexed rows using a faint background color.

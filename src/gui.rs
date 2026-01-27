@@ -255,6 +255,16 @@ impl eframe::App for AstroMonitorApp {
                             .stick_to_bottom(true)
                             .show_rows(ui, row_height, self.logs.len(), |ui, row_range| {
                                 for i in row_range {
+                                    if i % 2 == 1 {
+                                        ui.painter().rect_filled(
+                                            egui::Rect::from_min_size(
+                                                ui.cursor().min,
+                                                egui::vec2(ui.available_width(), row_height),
+                                            ),
+                                            0.0,
+                                            ui.visuals().faint_bg_color,
+                                        );
+                                    }
                                     // Ensure fixed height by disabling wrap/truncating
                                     ui.add(egui::Label::new(&self.logs[i]).truncate())
                                         .on_hover_ui(|ui| {
@@ -313,6 +323,16 @@ impl eframe::App for AstroMonitorApp {
                             .stick_to_bottom(true)
                             .show_rows(ui, row_height, self.alerts.len(), |ui, row_range| {
                                 for i in row_range {
+                                    if i % 2 == 1 {
+                                        ui.painter().rect_filled(
+                                            egui::Rect::from_min_size(
+                                                ui.cursor().min,
+                                                egui::vec2(ui.available_width(), row_height),
+                                            ),
+                                            0.0,
+                                            ui.visuals().faint_bg_color,
+                                        );
+                                    }
                                     // Bolt Optimization: Use pre-formatted string to avoid formatting in render loop
                                     let (level, text) = &self.alerts[i];
                                     let color = match level {
