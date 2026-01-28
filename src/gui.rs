@@ -201,7 +201,10 @@ impl eframe::App for AstroMonitorApp {
 
                 let progress = self.packet_index as f32 / self.packets.len() as f32;
                 // Bolt Optimization: Use cached progress text to avoid formatting/allocation every frame
-                ui.add(egui::ProgressBar::new(progress).text(&self.progress_text));
+                ui.add(egui::ProgressBar::new(progress).text(&self.progress_text))
+                    .on_hover_ui(|ui| {
+                        ui.label("Simulation Progress");
+                    });
             });
 
             ui.separator();
@@ -371,20 +374,29 @@ impl eframe::App for AstroMonitorApp {
                             egui::DragValue::new(&mut self.input_voltage)
                                 .speed(0.1)
                                 .suffix(" V"),
-                        );
+                        )
+                        .on_hover_ui(|ui| {
+                            ui.label("Bus Voltage (V)");
+                        });
                         ui.label("Current:");
                         ui.add(
                             egui::DragValue::new(&mut self.input_current)
                                 .speed(0.1)
                                 .suffix(" A"),
-                        );
+                        )
+                        .on_hover_ui(|ui| {
+                            ui.label("Bus Current (A)");
+                        });
                         ui.label("Battery:");
                         ui.add(
                             egui::DragValue::new(&mut self.input_battery)
                                 .speed(0.1)
                                 .range(0.0..=100.0)
                                 .suffix(" %"),
-                        );
+                        )
+                        .on_hover_ui(|ui| {
+                            ui.label("Battery Level (0-100%)");
+                        });
                         if self.input_battery < self.monitor.min_battery_level {
                             ui.label(egui::RichText::new("⚠").color(egui::Color32::RED))
                                 .on_hover_ui(|ui| {
@@ -400,7 +412,10 @@ impl eframe::App for AstroMonitorApp {
                             egui::DragValue::new(&mut self.input_temp)
                                 .speed(0.5)
                                 .suffix(" C"),
-                        );
+                        )
+                        .on_hover_ui(|ui| {
+                            ui.label("Sensor Temperature (°C)");
+                        });
                         if self.input_temp > self.monitor.max_temp_celsius {
                             ui.label(egui::RichText::new("⚠").color(egui::Color32::YELLOW))
                                 .on_hover_ui(|ui| {
