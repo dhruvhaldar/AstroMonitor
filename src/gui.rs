@@ -233,8 +233,16 @@ impl eframe::App for AstroMonitorApp {
                             if ui.button(icon).on_hover_ui(|ui| {
                                 ui.label(tooltip);
                             }).clicked() {
-                                let all_logs =
-                                    self.logs.iter().cloned().collect::<Vec<_>>().join("\n");
+                                // Bolt Optimization: Pre-calculate size and write to single buffer to avoid O(N) allocations
+                                let total_len = self.logs.iter().map(|s| s.len()).sum::<usize>()
+                                    + self.logs.len().saturating_sub(1);
+                                let mut all_logs = String::with_capacity(total_len);
+                                for (i, log) in self.logs.iter().enumerate() {
+                                    if i > 0 {
+                                        all_logs.push('\n');
+                                    }
+                                    all_logs.push_str(log);
+                                }
                                 ui.output_mut(|o| o.copied_text = all_logs);
                                 self.last_log_copy_time = Some(Instant::now());
                                 ui.ctx().request_repaint_after(Duration::from_secs(2));
@@ -287,12 +295,16 @@ impl eframe::App for AstroMonitorApp {
                             if ui.button(icon).on_hover_ui(|ui| {
                                 ui.label(tooltip);
                             }).clicked() {
-                                let all_alerts = self
-                                    .alerts
-                                    .iter()
-                                    .map(|(_, text)| text.clone())
-                                    .collect::<Vec<_>>()
-                                    .join("\n");
+                                // Bolt Optimization: Pre-calculate size and write to single buffer to avoid O(N) allocations
+                                let total_len = self.alerts.iter().map(|(_, s)| s.len()).sum::<usize>()
+                                    + self.alerts.len().saturating_sub(1);
+                                let mut all_alerts = String::with_capacity(total_len);
+                                for (i, (_, text)) in self.alerts.iter().enumerate() {
+                                    if i > 0 {
+                                        all_alerts.push('\n');
+                                    }
+                                    all_alerts.push_str(text);
+                                }
                                 ui.output_mut(|o| o.copied_text = all_alerts);
                                 self.last_alert_copy_time = Some(Instant::now());
                                 ui.ctx().request_repaint_after(Duration::from_secs(2));

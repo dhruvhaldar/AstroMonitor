@@ -11,3 +11,7 @@
 ## 2025-02-21 - [Cache Static Tooltips]
 **Learning:** `egui`'s `.on_hover_text(format!(...))` allocates a new String every frame. For tooltips based on static configuration (like monitor thresholds), these strings should be pre-formatted and cached during initialization.
 **Action:** Move static formatted strings to struct fields (e.g., `cached_tooltip`) and use `.on_hover_text(&self.cached_tooltip)` in the update loop.
+
+## 2025-02-24 - [Optimize String Concatenation]
+**Learning:** `iter().cloned().collect::<Vec<_>>().join("\n")` is a performance anti-pattern. It allocates a new String for every item (clone), a Vec to hold them, and a final String. This is O(N) allocations.
+**Action:** Use `String::with_capacity(total_len)` followed by a loop with `push_str()` to perform the operation with exactly 1 allocation and 0 copies (beyond the move to the buffer).
