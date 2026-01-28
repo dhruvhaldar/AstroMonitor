@@ -9,3 +9,7 @@
 ## 2024-05-25 - Transient Action Feedback
 **Learning:** Transient visual feedback (e.g., swapping button text to "✔ Sent!") is essential for confirming manual actions in data-heavy interfaces where the result (a log entry) might be visually noisy or lost.
 **Action:** For all manual injection or submission actions, implement a temporary state change (approx 2s) on the trigger element to confirm success without requiring the user to scan logs.
+
+## 2025-02-18 - Input Field Context in egui
+**Learning:** In egui, `DragValue` widgets lack placeholder text support, making context difficult to convey. However, they support tooltips via `.on_hover_ui()`. This is an effective pattern for adding unit/range context to compact numeric inputs.
+**Action:** When using compact numeric inputs in egui, always attach a tooltip explaining the unit and valid range.
