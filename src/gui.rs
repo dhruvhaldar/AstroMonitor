@@ -137,9 +137,21 @@ impl eframe::App for AstroMonitorApp {
         // Simulation Logic
         if !self.paused && self.packet_index < self.packets.len() {
             let delay = Duration::from_millis(self.simulation_delay_ms);
+            let now = Instant::now();
 
-            if self.last_update.elapsed() >= delay {
-                // Bolt Optimization: Parse packet first to avoid cloning the packet data vector.
+            // Bolt Optimization: Handle large time gaps (e.g. after unpausing or debugging)
+            // to prevent "catch-up" spiral.
+            if now.duration_since(self.last_update) > Duration::from_secs(1) {
+                self.last_update = now;
+            }
+
+            // Bolt Optimization: Decouple simulation from frame rate.
+            // Process multiple packets if we are behind (fixed timestep loop).
+            let mut packets_processed = 0;
+            const MAX_PACKETS_PER_FRAME: usize = 10;
+
+            while self.last_update.elapsed() >= delay && self.packet_index < self.packets.len() {
+                // Parse packet first to avoid cloning the packet data vector.
                 // We borrow `self.packets` (immutable) then `self` fields (mutable) separately.
                 let result = Parser::parse(&self.packets[self.packet_index]);
                 Self::process_result(
@@ -151,8 +163,19 @@ impl eframe::App for AstroMonitorApp {
                     Some(self.packet_index + 1),
                 );
                 self.packet_index += 1;
+                self.last_update += delay; // Maintain accurate timing phase
+
+                packets_processed += 1;
+                if packets_processed >= MAX_PACKETS_PER_FRAME {
+                    // Safety break: if we are too far behind, stop to prevent UI freeze
+                    // and reset the timer to avoid infinite catch-up next frame.
+                    self.last_update = Instant::now();
+                    break;
+                }
+            }
+
+            if packets_processed > 0 {
                 self.update_progress_text();
-                self.last_update = Instant::now();
             }
 
             // Bolt Optimization: Prevent busy loop by scheduling repaint only when needed
@@ -223,7 +246,7 @@ impl eframe::App for AstroMonitorApp {
                     self.paused = false;
                 }
                 ui.add(
-                    egui::Slider::new(&mut self.simulation_delay_ms, 100..=2000).text("Delay (ms)"),
+                    egui::Slider::new(&mut self.simulation_delay_ms, 10..=2000).text("Delay (ms)"),
                 )
                 .on_hover_ui(|ui| {
                     ui.label("Adjust simulation speed (delay between packets in milliseconds)");

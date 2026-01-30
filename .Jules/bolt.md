@@ -15,3 +15,7 @@
 ## 2025-02-24 - [Optimize String Concatenation]
 **Learning:** `iter().cloned().collect::<Vec<_>>().join("\n")` is a performance anti-pattern. It allocates a new String for every item (clone), a Vec to hold them, and a final String. This is O(N) allocations.
 **Action:** Use `String::with_capacity(total_len)` followed by a loop with `push_str()` to perform the operation with exactly 1 allocation and 0 copies (beyond the move to the buffer).
+
+## 2025-02-25 - [Decouple Simulation from Frame Rate]
+**Learning:** Tying simulation steps 1:1 with `egui` frames limits throughput to the monitor's refresh rate (e.g., 60Hz). High-frequency simulation (e.g., 100Hz) requires decoupling the update loop from the render loop.
+**Action:** Implement a fixed-timestep `while` loop within `update()` that processes multiple simulation steps per frame if needed (`accumulated_time >= step_delay`), with a safety limit to prevent spiral-of-death.
