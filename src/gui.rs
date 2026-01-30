@@ -1,4 +1,6 @@
-use crate::{simulation, AlertLevel, Monitor, Parser, ParserError, TelemetryPacket};
+use crate::{
+    simulation, AlertLevel, Monitor, Parser, ParserError, TelemetryPacket, TelemetryPayload,
+};
 use eframe::egui;
 use std::collections::VecDeque;
 use std::fmt::Write;
@@ -12,6 +14,34 @@ enum InputSubsystem {
     Power,
     Thermal,
     StarTracker,
+}
+
+// Bolt Optimization: Helper struct for compact payload formatting
+struct CompactPayload<'a>(&'a TelemetryPayload<'a>);
+
+impl<'a> std::fmt::Display for CompactPayload<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.0 {
+            TelemetryPayload::Power(d) => write!(
+                f,
+                "Power(V:{:.1} C:{:.1} B:{:.1}%)",
+                d.voltage, d.current, d.battery_level
+            ),
+            TelemetryPayload::Thermal(d) => write!(f, "Thermal({:.1}°C)", d.temp_celsius),
+            TelemetryPayload::StarTracker(d) => {
+                write!(
+                    f,
+                    "StarTracker(RA:{:.1} Dec:{:.1} Conf:{:.2}",
+                    d.coordinates.right_ascension, d.coordinates.declination, d.confidence
+                )?;
+                if let Some(id) = &d.target_id {
+                    write!(f, " ID:{}", id)?;
+                }
+                write!(f, ")")
+            }
+            TelemetryPayload::Unknown => write!(f, "Unknown"),
+        }
+    }
 }
 
 pub struct AstroMonitorApp {
@@ -220,9 +250,13 @@ impl eframe::App for AstroMonitorApp {
                     ui.horizontal(|ui| {
                         ui.heading("System Logs");
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            if ui.button("🗑").on_hover_ui(|ui| {
-                                ui.label("Clear logs");
-                            }).clicked() {
+                            if ui
+                                .button("🗑")
+                                .on_hover_ui(|ui| {
+                                    ui.label("Clear logs");
+                                })
+                                .clicked()
+                            {
                                 self.logs.clear();
                             }
                             let (icon, tooltip) = if let Some(_t) = self
@@ -233,9 +267,13 @@ impl eframe::App for AstroMonitorApp {
                             } else {
                                 ("📋", "Copy logs to clipboard")
                             };
-                            if ui.button(icon).on_hover_ui(|ui| {
-                                ui.label(tooltip);
-                            }).clicked() {
+                            if ui
+                                .button(icon)
+                                .on_hover_ui(|ui| {
+                                    ui.label(tooltip);
+                                })
+                                .clicked()
+                            {
                                 // Bolt Optimization: Pre-calculate size and write to single buffer to avoid O(N) allocations
                                 let total_len = self.logs.iter().map(|s| s.len()).sum::<usize>()
                                     + self.logs.len().saturating_sub(1);
@@ -281,9 +319,13 @@ impl eframe::App for AstroMonitorApp {
                     ui.horizontal(|ui| {
                         ui.heading("Active Alerts");
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            if ui.button("🗑").on_hover_ui(|ui| {
-                                ui.label("Clear alerts");
-                            }).clicked() {
+                            if ui
+                                .button("🗑")
+                                .on_hover_ui(|ui| {
+                                    ui.label("Clear alerts");
+                                })
+                                .clicked()
+                            {
                                 self.alerts.clear();
                                 self.alert_counts = [0, 0, 0];
                             }
@@ -295,12 +337,17 @@ impl eframe::App for AstroMonitorApp {
                             } else {
                                 ("📋", "Copy alerts to clipboard")
                             };
-                            if ui.button(icon).on_hover_ui(|ui| {
-                                ui.label(tooltip);
-                            }).clicked() {
+                            if ui
+                                .button(icon)
+                                .on_hover_ui(|ui| {
+                                    ui.label(tooltip);
+                                })
+                                .clicked()
+                            {
                                 // Bolt Optimization: Pre-calculate size and write to single buffer to avoid O(N) allocations
-                                let total_len = self.alerts.iter().map(|(_, s)| s.len()).sum::<usize>()
-                                    + self.alerts.len().saturating_sub(1);
+                                let total_len =
+                                    self.alerts.iter().map(|(_, s)| s.len()).sum::<usize>()
+                                        + self.alerts.len().saturating_sub(1);
                                 let mut all_alerts = String::with_capacity(total_len);
                                 for (i, (_, text)) in self.alerts.iter().enumerate() {
                                     if i > 0 {
@@ -339,10 +386,9 @@ impl eframe::App for AstroMonitorApp {
                                     // (RichText::new(text.clone()) would allocate a new String every frame)
                                     ui.style_mut().visuals.override_text_color = Some(color);
                                     // Ensure fixed height by disabling wrap/truncating
-                                    ui.add(egui::Label::new(text).truncate())
-                                        .on_hover_ui(|ui| {
-                                            ui.label(text);
-                                        });
+                                    ui.add(egui::Label::new(text).truncate()).on_hover_ui(|ui| {
+                                        ui.label(text);
+                                    });
                                     // Reset color for safety (though loop re-sets it)
                                     ui.style_mut().visuals.override_text_color = None;
                                 }
@@ -557,20 +603,29 @@ impl AstroMonitorApp {
                 let m = (ts / 60) % 60;
                 let h = (ts / 3600) % 24;
 
+                // Bolt Optimization: Use CompactPayload to reduce log string size and formatting overhead.
+                // Replaces verbose debug output (Power { ... }) with compact representation (Power(...))
                 if let Some(idx) = index {
                     Self::add_to_log(
                         logs,
                         format_args!(
-                            "[{:02}:{:02}:{:02}] Packet {}: Parsed {:?} - {:?}",
-                            h, m, s, idx, packet.subsystem, packet.payload
+                            "[{:02}:{:02}:{:02}] Packet {}: {}",
+                            h,
+                            m,
+                            s,
+                            idx,
+                            CompactPayload(&packet.payload)
                         ),
                     );
                 } else {
                     Self::add_to_log(
                         logs,
                         format_args!(
-                            "[{:02}:{:02}:{:02}] Manual Packet: Parsed {:?} - {:?}",
-                            h, m, s, packet.subsystem, packet.payload
+                            "[{:02}:{:02}:{:02}] Manual Packet: {}",
+                            h,
+                            m,
+                            s,
+                            CompactPayload(&packet.payload)
                         ),
                     );
                 }
@@ -678,7 +733,7 @@ impl AstroMonitorApp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{Subsystem, TelemetryPayload, PowerData};
+    use crate::models::{PowerData, Subsystem, TelemetryPayload};
 
     #[test]
     fn test_process_result_formatting() {
@@ -711,10 +766,11 @@ mod tests {
         assert_eq!(logs.len(), 1);
         // We expect "[20:20:00]" to be at the start
         assert!(logs[0].starts_with("[20:20:00]"));
-        assert!(logs[0].contains("Packet 1: Parsed"));
+        // Now using compact formatting, so check for new format
+        assert!(logs[0].contains("Packet 1: Power(V:28.0"));
 
         // Now test alert formatting (low battery)
-         let packet_alert = TelemetryPacket {
+        let packet_alert = TelemetryPacket {
             timestamp,
             subsystem: Subsystem::Power,
             payload: TelemetryPayload::Power(PowerData {
