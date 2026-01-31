@@ -4,6 +4,7 @@ use crate::{
 use eframe::egui;
 use std::collections::VecDeque;
 use std::fmt::Write;
+use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const MAX_LOGS: usize = 1000;
@@ -77,6 +78,9 @@ pub struct AstroMonitorApp {
     cached_battery_tooltip: String,
     cached_temp_tooltip: String,
     cached_star_tooltip: String,
+
+    // Bolt Optimization: Cached Galleys for System Status to avoid per-frame text layout/allocation
+    cached_status_galleys: [Option<Arc<egui::Galley>>; 4],
 }
 
 impl Default for AstroMonitorApp {
@@ -117,6 +121,8 @@ impl Default for AstroMonitorApp {
             cached_battery_tooltip,
             cached_temp_tooltip,
             cached_star_tooltip,
+
+            cached_status_galleys: [None, None, None, None],
 
             // Default input values
             input_subsystem: InputSubsystem::Power,
@@ -166,24 +172,46 @@ impl eframe::App for AstroMonitorApp {
             ui.horizontal(|ui| {
                 ui.heading("Astro Monitor Dashboard");
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    // Bolt Optimization: Use cached Galleys for System Status
+                    // This avoids allocating a new String and re-calculating text layout every frame (60Hz+)
+                    if self.cached_status_galleys[0].is_none() {
+                        let variants = [
+                            ("SYSTEM CRITICAL 🔴", egui::Color32::RED),
+                            ("System Warning ⚠️", egui::Color32::YELLOW),
+                            ("System Info ℹ", egui::Color32::LIGHT_BLUE),
+                            ("System Nominal 🟢", egui::Color32::GREEN),
+                        ];
+                        for (i, (text, color)) in variants.iter().enumerate() {
+                            let rt = egui::RichText::new(*text).color(*color).strong();
+                            let wt: egui::WidgetText = rt.into();
+                            let galley = wt.into_galley(
+                                ui,
+                                None,
+                                f32::INFINITY,
+                                egui::FontSelection::Default,
+                            );
+                            self.cached_status_galleys[i] = Some(galley);
+                        }
+                    }
+
                     // Bolt Optimization: O(1) status check using cached alert counts
-                    let (status_text, status_color) = if self.alert_counts[2] > 0 {
-                        ("SYSTEM CRITICAL 🔴", egui::Color32::RED)
+                    let idx = if self.alert_counts[2] > 0 {
+                        0 // Critical
                     } else if self.alert_counts[1] > 0 {
-                        ("System Warning ⚠️", egui::Color32::YELLOW)
+                        1 // Warning
                     } else if self.alert_counts[0] > 0 {
-                        ("System Info ℹ", egui::Color32::LIGHT_BLUE)
+                        2 // Info
                     } else {
-                        ("System Nominal 🟢", egui::Color32::GREEN)
+                        3 // Nominal
                     };
-                    ui.label(
-                        egui::RichText::new(status_text)
-                            .color(status_color)
-                            .strong(),
-                    )
-                    .on_hover_ui(|ui| {
-                        ui.label("Aggregate system status based on active alerts");
-                    });
+
+                    // Unwrap is safe because we just initialized it above if it was None
+                    if let Some(galley) = &self.cached_status_galleys[idx] {
+                        ui.label(egui::WidgetText::Galley(galley.clone()))
+                            .on_hover_ui(|ui| {
+                                ui.label("Aggregate system status based on active alerts");
+                            });
+                    }
                 });
             });
 
