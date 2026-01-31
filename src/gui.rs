@@ -71,6 +71,7 @@ pub struct AstroMonitorApp {
     last_log_copy_time: Option<Instant>,
     last_alert_copy_time: Option<Instant>,
     last_injection_time: Option<Instant>,
+    restart_confirm_time: Option<Instant>,
 
     // Cached Tooltips (Bolt Optimization)
     // Note: These must be updated if `monitor` thresholds are changed at runtime.
@@ -113,6 +114,7 @@ impl Default for AstroMonitorApp {
             last_log_copy_time: None,
             last_alert_copy_time: None,
             last_injection_time: None,
+            restart_confirm_time: None,
 
             cached_battery_tooltip,
             cached_temp_tooltip,
@@ -207,13 +209,40 @@ impl eframe::App for AstroMonitorApp {
                 {
                     self.paused = !self.paused;
                 }
-                if ui
-                    .button("↻ Restart")
-                    .on_hover_ui(|ui| {
-                        ui.label("⚠ Clears all logs, alerts, and restarts the simulation.");
-                    })
-                    .clicked()
+                let restart_clicked = if let Some(_t) =
+                    self.restart_confirm_time.filter(|t| t.elapsed().as_secs() < 3)
                 {
+                    let btn = ui.add(
+                        egui::Button::new(
+                            egui::RichText::new("⚠ Confirm?").color(egui::Color32::RED),
+                        )
+                        .fill(egui::Color32::from_rgb(50, 0, 0)),
+                    );
+                    if btn
+                        .on_hover_ui(|ui| {
+                            ui.label("Click again to confirm full system restart.");
+                        })
+                        .clicked()
+                    {
+                        self.restart_confirm_time = None;
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    if ui
+                        .button("↻ Restart")
+                        .on_hover_ui(|ui| {
+                            ui.label("⚠ Clears all logs, alerts, and restarts the simulation.");
+                        })
+                        .clicked()
+                    {
+                        self.restart_confirm_time = Some(Instant::now());
+                    }
+                    false
+                };
+
+                if restart_clicked {
                     self.packet_index = 0;
                     self.update_progress_text();
                     self.logs.clear();
