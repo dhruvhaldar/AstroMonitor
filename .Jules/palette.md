@@ -13,3 +13,7 @@
 ## 2025-02-18 - Input Field Context in egui
 **Learning:** In egui, `DragValue` widgets lack placeholder text support, making context difficult to convey. However, they support tooltips via `.on_hover_ui()`. This is an effective pattern for adding unit/range context to compact numeric inputs.
 **Action:** When using compact numeric inputs in egui, always attach a tooltip explaining the unit and valid range.
+
+## 2025-02-25 - Destructive Action Confirmation
+**Learning:** For destructive actions (like "Restart Simulation") in immediate mode GUIs, a full modal dialog is often overkill. A "Click-to-Confirm" pattern—where the button changes state (color/text) for a few seconds—provides sufficient safety while maintaining flow.
+**Action:** Implement destructive buttons with a transient confirmation state tracked by a timestamp. On first click, arm the button (change to red/warning); on second click (within timeout), execute.
