@@ -632,7 +632,8 @@ impl AstroMonitorApp {
         let mut buffer = if logs.len() >= MAX_LOGS {
             logs.pop_front().unwrap_or_default()
         } else {
-            String::new()
+            // Bolt Optimization: Pre-allocate buffer to avoid multiple reallocations during formatting
+            String::with_capacity(128)
         };
         buffer.clear();
         // Bolt Optimization: Write directly to recycled buffer to avoid allocation
@@ -706,10 +707,12 @@ impl AstroMonitorApp {
                             }
                             old_string
                         } else {
-                            String::new()
+                            // Bolt Optimization: Pre-allocate buffer for alerts
+                            String::with_capacity(128)
                         }
                     } else {
-                        String::new()
+                        // Bolt Optimization: Pre-allocate buffer for alerts
+                        String::with_capacity(128)
                     };
                     buffer.clear();
 
@@ -747,7 +750,8 @@ impl AstroMonitorApp {
     }
 
     fn create_manual_packet(&self) -> Vec<u8> {
-        let mut packet = Vec::new();
+        // Bolt Optimization: Pre-allocate vector to avoid reallocations during packet construction
+        let mut packet = Vec::with_capacity(256);
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
