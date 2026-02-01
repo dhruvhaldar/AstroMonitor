@@ -184,7 +184,19 @@ impl eframe::App for AstroMonitorApp {
                             .strong(),
                     )
                     .on_hover_ui(|ui| {
-                        ui.label("Aggregate system status based on active alerts");
+                        ui.label("Aggregate system status based on active alerts:");
+                        ui.label(
+                            egui::RichText::new(format!("Critical: {}", self.alert_counts[2]))
+                                .color(egui::Color32::RED),
+                        );
+                        ui.label(
+                            egui::RichText::new(format!("Warning:  {}", self.alert_counts[1]))
+                                .color(egui::Color32::YELLOW),
+                        );
+                        ui.label(
+                            egui::RichText::new(format!("Info:     {}", self.alert_counts[0]))
+                                .color(egui::Color32::LIGHT_BLUE),
+                        );
                     });
                 });
             });
