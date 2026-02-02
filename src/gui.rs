@@ -507,7 +507,8 @@ impl eframe::App for AstroMonitorApp {
                             ui.label("Battery Level (0-100%)");
                         });
                         if self.input_battery < self.monitor.min_battery_level {
-                            ui.label(egui::RichText::new("⚠").color(egui::Color32::RED))
+                            // Bolt Optimization: Use colored_label to avoid RichText allocation
+                            ui.colored_label(egui::Color32::RED, "⚠")
                                 .on_hover_ui(|ui| {
                                     ui.label(&self.cached_battery_tooltip);
                                 });
@@ -526,7 +527,8 @@ impl eframe::App for AstroMonitorApp {
                             ui.label("Sensor Temperature (°C)");
                         });
                         if self.input_temp > self.monitor.max_temp_celsius {
-                            ui.label(egui::RichText::new("⚠").color(egui::Color32::YELLOW))
+                            // Bolt Optimization: Use colored_label to avoid RichText allocation
+                            ui.colored_label(egui::Color32::YELLOW, "⚠")
                                 .on_hover_ui(|ui| {
                                     ui.label(&self.cached_temp_tooltip);
                                 });
@@ -563,7 +565,8 @@ impl eframe::App for AstroMonitorApp {
                             ui.label("Star Match Confidence (0.0-1.0)");
                         });
                         if self.input_confidence < self.monitor.min_star_confidence {
-                            ui.label(egui::RichText::new("ℹ").color(egui::Color32::LIGHT_BLUE))
+                            // Bolt Optimization: Use colored_label to avoid RichText allocation
+                            ui.colored_label(egui::Color32::LIGHT_BLUE, "ℹ")
                                 .on_hover_ui(|ui| {
                                     ui.label(&self.cached_star_tooltip);
                                 });
