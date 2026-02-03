@@ -139,10 +139,15 @@ impl eframe::App for AstroMonitorApp {
         // Simulation Logic
         if !self.paused && self.packet_index < self.packets.len() {
             let delay = Duration::from_millis(self.simulation_delay_ms);
+            let mut steps = 0;
+            let max_steps = 10; // Bolt Optimization: Prevent freeze/spiral of death
 
-            if self.last_update.elapsed() >= delay {
-                // Bolt Optimization: Parse packet first to avoid cloning the packet data vector.
-                // We borrow `self.packets` (immutable) then `self` fields (mutable) separately.
+            // Bolt Optimization: Fixed timestep loop to decouple simulation speed from frame rate
+            while self.last_update.elapsed() >= delay
+                && self.packet_index < self.packets.len()
+                && steps < max_steps
+            {
+                // Parse packet first to avoid cloning the packet data vector.
                 let result = Parser::parse(&self.packets[self.packet_index]);
                 Self::process_result(
                     &mut self.logs,
@@ -154,6 +159,12 @@ impl eframe::App for AstroMonitorApp {
                 );
                 self.packet_index += 1;
                 self.update_progress_text();
+                self.last_update += delay; // Catch up without drift
+                steps += 1;
+            }
+
+            // If we hit the limit, reset to avoid backlog
+            if steps >= max_steps {
                 self.last_update = Instant::now();
             }
 
@@ -203,11 +214,17 @@ impl eframe::App for AstroMonitorApp {
                     .clicked()
                 {
                     self.paused = !self.paused;
+                    if !self.paused {
+                        self.last_update = Instant::now();
+                    }
                 }
                 // Handle keyboard shortcut (Space to toggle pause)
                 if ui.input(|i| i.key_pressed(egui::Key::Space)) && !ui.ctx().wants_keyboard_input()
                 {
                     self.paused = !self.paused;
+                    if !self.paused {
+                        self.last_update = Instant::now();
+                    }
                 }
                 let restart_clicked = if let Some(_t) =
                     self.restart_confirm_time.filter(|t| t.elapsed().as_secs() < 3)
