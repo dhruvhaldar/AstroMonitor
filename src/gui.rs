@@ -277,7 +277,7 @@ impl eframe::App for AstroMonitorApp {
                 // Logs Column
                 columns[0].vertical(|ui| {
                     ui.horizontal(|ui| {
-                        ui.heading("System Logs");
+                        ui.heading(format!("System Logs ({})", self.logs.len()));
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             if ui
                                 .button("🗑")
@@ -361,7 +361,7 @@ impl eframe::App for AstroMonitorApp {
                 // Alerts Column
                 columns[1].vertical(|ui| {
                     ui.horizontal(|ui| {
-                        ui.heading("Active Alerts");
+                        ui.heading(format!("Active Alerts ({})", self.alerts.len()));
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             if ui
                                 .button("🗑")
@@ -630,11 +630,17 @@ impl AstroMonitorApp {
     fn update_progress_text(&mut self) {
         // Bolt Optimization: Reuse the existing string buffer to avoid allocation
         self.progress_text.clear();
+        let percentage = if !self.packets.is_empty() {
+            (self.packet_index as f32 / self.packets.len() as f32) * 100.0
+        } else {
+            0.0
+        };
         let _ = write!(
             self.progress_text,
-            "{}/{}",
+            "{}/{} ({:.0}%)",
             self.packet_index,
-            self.packets.len()
+            self.packets.len(),
+            percentage
         );
     }
 
