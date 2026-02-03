@@ -21,3 +21,7 @@
 ## 2025-05-23 - Improved Empty States
 **Learning:** Users often feel unsure if a system is working when they see blank lists (Logs/Alerts). "No logs" can be interpreted as "Broken" rather than "Nothing happened yet".
 **Action:** Replace text-only empty states with Icon + Heading + Subtext pattern to provide context and reassurance (especially for "No Alerts").
+
+## 2025-06-15 - Header Information Density
+**Learning:** Users monitor lists (Logs/Alerts) more effectively when headers provide quantitative context. A simple count in the header allows users to assess system activity volume without needing to scroll or decipher empty states.
+**Action:** Append counts to list headers (e.g., "Logs (12)") to provide immediate, high-level status visibility.
