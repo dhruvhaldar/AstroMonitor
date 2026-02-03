@@ -15,3 +15,7 @@
 ## 2025-02-24 - [Optimize String Concatenation]
 **Learning:** `iter().cloned().collect::<Vec<_>>().join("\n")` is a performance anti-pattern. It allocates a new String for every item (clone), a Vec to hold them, and a final String. This is O(N) allocations.
 **Action:** Use `String::with_capacity(total_len)` followed by a loop with `push_str()` to perform the operation with exactly 1 allocation and 0 copies (beyond the move to the buffer).
+
+## 2025-02-26 - [Avoid RichText for Simple Colors]
+**Learning:** `egui::RichText::new("...")` allocates a `String` even for string literals. In a 60Hz loop, this adds up (e.g., 3 warnings = 180 allocations/sec).
+**Action:** Use `ui.colored_label(color, text)` instead of `ui.label(RichText::new(text).color(color))` when standard font weight is sufficient. This avoids the allocation completely for literals.
