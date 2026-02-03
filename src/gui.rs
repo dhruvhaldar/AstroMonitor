@@ -324,7 +324,11 @@ impl eframe::App for AstroMonitorApp {
                     if self.logs.is_empty() {
                         ui.vertical_centered(|ui| {
                             ui.add_space(20.0);
-                            ui.label(egui::RichText::new("No system logs").italics().weak());
+                            ui.label(egui::RichText::new("📄").size(24.0));
+                            ui.label(egui::RichText::new("No System Logs").heading());
+                            ui.label(
+                                egui::RichText::new("Telemetry events will appear here").weak(),
+                            );
                         });
                     } else {
                         egui::ScrollArea::both()
@@ -406,7 +410,13 @@ impl eframe::App for AstroMonitorApp {
                     if self.alerts.is_empty() {
                         ui.vertical_centered(|ui| {
                             ui.add_space(20.0);
-                            ui.label(egui::RichText::new("No active alerts").italics().weak());
+                            ui.label(egui::RichText::new("✅").size(24.0));
+                            ui.label(
+                                egui::RichText::new("All Systems Nominal")
+                                    .heading()
+                                    .color(egui::Color32::GREEN),
+                            );
+                            ui.label(egui::RichText::new("No active alerts detected").weak());
                         });
                     } else {
                         egui::ScrollArea::both()

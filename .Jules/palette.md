@@ -17,3 +17,7 @@
 ## 2025-02-25 - Destructive Action Confirmation
 **Learning:** For destructive actions (like "Restart Simulation") in immediate mode GUIs, a full modal dialog is often overkill. A "Click-to-Confirm" pattern—where the button changes state (color/text) for a few seconds—provides sufficient safety while maintaining flow.
 **Action:** Implement destructive buttons with a transient confirmation state tracked by a timestamp. On first click, arm the button (change to red/warning); on second click (within timeout), execute.
+
+## 2025-05-23 - Improved Empty States
+**Learning:** Users often feel unsure if a system is working when they see blank lists (Logs/Alerts). "No logs" can be interpreted as "Broken" rather than "Nothing happened yet".
+**Action:** Replace text-only empty states with Icon + Heading + Subtext pattern to provide context and reassurance (especially for "No Alerts").
