@@ -280,12 +280,23 @@ impl eframe::App for AstroMonitorApp {
                     self.last_update = Instant::now();
                     self.paused = false;
                 }
-                ui.add(
-                    egui::Slider::new(&mut self.simulation_delay_ms, 100..=2000).text("Delay (ms)"),
-                )
-                .on_hover_ui(|ui| {
-                    ui.label("Adjust simulation speed (delay between packets in milliseconds)");
-                });
+                if ui
+                    .add(
+                        egui::Slider::new(&mut self.simulation_delay_ms, 100..=2000)
+                            .text("Delay (ms)"),
+                    )
+                    .on_hover_ui(|ui| {
+                        ui.label("Adjust simulation speed (delay between packets in milliseconds)");
+                    })
+                    .changed()
+                {
+                    Self::format_progress_text(
+                        &mut self.progress_text,
+                        self.packet_index,
+                        self.packets.len(),
+                        self.simulation_delay_ms,
+                    );
+                }
 
                 let progress = self.packet_index as f32 / self.packets.len() as f32;
                 // Bolt Optimization: Use cached progress text to avoid formatting/allocation every frame
@@ -660,20 +671,43 @@ impl eframe::App for AstroMonitorApp {
 
 impl AstroMonitorApp {
     fn update_progress_text(&mut self) {
+        Self::format_progress_text(
+            &mut self.progress_text,
+            self.packet_index,
+            self.packets.len(),
+            self.simulation_delay_ms,
+        );
+    }
+
+    fn format_progress_text(buffer: &mut String, current: usize, total: usize, delay: u64) {
         // Bolt Optimization: Reuse the existing string buffer to avoid allocation
-        self.progress_text.clear();
-        let percentage = if !self.packets.is_empty() {
-            (self.packet_index as f32 / self.packets.len() as f32) * 100.0
+        buffer.clear();
+        let percentage = if total > 0 {
+            (current as f32 / total as f32) * 100.0
         } else {
             0.0
         };
-        let _ = write!(
-            self.progress_text,
-            "{}/{} ({:.0}%)",
-            self.packet_index,
-            self.packets.len(),
-            percentage
-        );
+
+        let remaining_packets = total.saturating_sub(current);
+        let remaining_ms = remaining_packets as u64 * delay;
+        // Round to nearest second
+        let total_seconds = (remaining_ms + 500) / 1000;
+
+        if total_seconds > 60 {
+            let m = total_seconds / 60;
+            let s = total_seconds % 60;
+            let _ = write!(
+                buffer,
+                "{}/{} ({:.0}%) - {}m {}s left",
+                current, total, percentage, m, s
+            );
+        } else {
+            let _ = write!(
+                buffer,
+                "{}/{} ({:.0}%) - {}s left",
+                current, total, percentage, total_seconds
+            );
+        }
     }
 
     fn add_to_log(logs: &mut VecDeque<String>, args: std::fmt::Arguments<'_>) {
@@ -900,5 +934,39 @@ mod tests {
         let (_, alert_msg) = &alerts[0];
         // Alert message should contain formatted time
         assert!(alert_msg.contains("(Time: 20:20:00)"));
+    }
+
+    #[test]
+    fn test_format_progress_text() {
+        let mut buffer = String::new();
+
+        // Case 1: Start (0/1000), 1000ms delay
+        // Remaining: 1000 * 1000ms = 1000s = 16m 40s
+        AstroMonitorApp::format_progress_text(&mut buffer, 0, 1000, 1000);
+        assert_eq!(buffer, "0/1000 (0%) - 16m 40s left");
+
+        // Case 2: Middle (500/1000)
+        // Remaining: 500 * 1000ms = 500s = 8m 20s
+        AstroMonitorApp::format_progress_text(&mut buffer, 500, 1000, 1000);
+        assert_eq!(buffer, "500/1000 (50%) - 8m 20s left");
+
+        // Case 3: Near End (990/1000), short time
+        // Remaining: 10 * 1000ms = 10s
+        AstroMonitorApp::format_progress_text(&mut buffer, 990, 1000, 1000);
+        assert_eq!(buffer, "990/1000 (99%) - 10s left");
+
+        // Case 4: Finished (1000/1000)
+        // Remaining: 0s
+        AstroMonitorApp::format_progress_text(&mut buffer, 1000, 1000, 1000);
+        assert_eq!(buffer, "1000/1000 (100%) - 0s left");
+
+        // Case 5: Empty (0/0)
+        AstroMonitorApp::format_progress_text(&mut buffer, 0, 0, 1000);
+        assert_eq!(buffer, "0/0 (0%) - 0s left");
+
+        // Case 6: High Delay (2000ms), 90s left
+        // 45 packets left * 2000ms = 90s = 1m 30s
+        AstroMonitorApp::format_progress_text(&mut buffer, 55, 100, 2000);
+        assert_eq!(buffer, "55/100 (55%) - 1m 30s left");
     }
 }
