@@ -104,8 +104,9 @@ impl Default for AstroMonitorApp {
             monitor,
             packets,
             packet_index: 0,
-            logs: VecDeque::new(),
-            alerts: VecDeque::new(),
+            // Bolt Optimization: Pre-allocate collections to avoid reallocations during startup
+            logs: VecDeque::with_capacity(MAX_LOGS),
+            alerts: VecDeque::with_capacity(MAX_ALERTS),
             alert_counts: [0, 0, 0],
             last_update: Instant::now(),
             simulation_delay_ms: 1000,
@@ -158,10 +159,11 @@ impl eframe::App for AstroMonitorApp {
                     Some(self.packet_index + 1),
                 );
                 self.packet_index += 1;
-                self.update_progress_text();
+                // Bolt Optimization: Moved update_progress_text outside the loop to update once per frame instead of per packet
                 self.last_update += delay; // Catch up without drift
                 steps += 1;
             }
+            self.update_progress_text();
 
             // If we hit the limit, reset to avoid backlog
             if steps >= max_steps {
