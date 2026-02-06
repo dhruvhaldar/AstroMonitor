@@ -1,3 +1,4 @@
+use crate::models::{CelestialCoordinates, PowerData, ThermalData};
 use crate::{
     simulation, AlertLevel, Monitor, Parser, ParserError, TelemetryPacket, TelemetryPayload,
 };
@@ -16,30 +17,89 @@ enum InputSubsystem {
     StarTracker,
 }
 
-// Bolt Optimization: Helper struct for compact payload formatting
-struct CompactPayload<'a>(&'a TelemetryPayload<'a>);
+// Bolt Optimization: Owned types to avoid lifetime issues and allow efficient storage
+// Defer formatting until render time to avoid CPU spikes during simulation loop
+#[derive(Clone)]
+struct OwnedStarTrackerReading {
+    pub target_id: Option<String>,
+    pub coordinates: CelestialCoordinates,
+    pub confidence: f64,
+}
 
-impl<'a> std::fmt::Display for CompactPayload<'a> {
+#[derive(Clone)]
+enum OwnedPayload {
+    Power(PowerData),
+    Thermal(ThermalData),
+    StarTracker(OwnedStarTrackerReading),
+    Unknown,
+}
+
+impl<'a> From<TelemetryPayload<'a>> for OwnedPayload {
+    fn from(tp: TelemetryPayload<'a>) -> Self {
+        match tp {
+            TelemetryPayload::Power(d) => OwnedPayload::Power(d),
+            TelemetryPayload::Thermal(d) => OwnedPayload::Thermal(d),
+            TelemetryPayload::StarTracker(d) => OwnedPayload::StarTracker(OwnedStarTrackerReading {
+                target_id: d.target_id.map(|cow| cow.into_owned()),
+                coordinates: d.coordinates,
+                confidence: d.confidence,
+            }),
+            TelemetryPayload::Unknown => OwnedPayload::Unknown,
+        }
+    }
+}
+
+#[derive(Clone)]
+enum LogEntry {
+    Packet {
+        timestamp: u64,
+        index: Option<usize>, // "Packet {}" or "Manual Packet"
+        payload: OwnedPayload,
+    },
+    Message(String),
+}
+
+impl std::fmt::Display for LogEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.0 {
-            TelemetryPayload::Power(d) => write!(
-                f,
-                "Power(V:{:.1} C:{:.1} B:{:.1}%)",
-                d.voltage, d.current, d.battery_level
-            ),
-            TelemetryPayload::Thermal(d) => write!(f, "Thermal({:.1}°C)", d.temp_celsius),
-            TelemetryPayload::StarTracker(d) => {
-                write!(
-                    f,
-                    "StarTracker(RA:{:.1} Dec:{:.1} Conf:{:.2}",
-                    d.coordinates.right_ascension, d.coordinates.declination, d.confidence
-                )?;
-                if let Some(id) = &d.target_id {
-                    write!(f, " ID:{}", id)?;
+        match self {
+            LogEntry::Packet {
+                timestamp,
+                index,
+                payload,
+            } => {
+                let s = timestamp % 60;
+                let m = (timestamp / 60) % 60;
+                let h = (timestamp / 3600) % 24;
+
+                write!(f, "[{:02}:{:02}:{:02}] ", h, m, s)?;
+                if let Some(idx) = index {
+                    write!(f, "Packet {}: ", idx)?;
+                } else {
+                    write!(f, "Manual Packet: ")?;
                 }
-                write!(f, ")")
+
+                match payload {
+                    OwnedPayload::Power(d) => write!(
+                        f,
+                        "Power(V:{:.1} C:{:.1} B:{:.1}%)",
+                        d.voltage, d.current, d.battery_level
+                    ),
+                    OwnedPayload::Thermal(d) => write!(f, "Thermal({:.1}°C)", d.temp_celsius),
+                    OwnedPayload::StarTracker(d) => {
+                        write!(
+                            f,
+                            "StarTracker(RA:{:.1} Dec:{:.1} Conf:{:.2}",
+                            d.coordinates.right_ascension, d.coordinates.declination, d.confidence
+                        )?;
+                        if let Some(id) = &d.target_id {
+                            write!(f, " ID:{}", id)?;
+                        }
+                        write!(f, ")")
+                    }
+                    OwnedPayload::Unknown => write!(f, "Unknown"),
+                }
             }
-            TelemetryPayload::Unknown => write!(f, "Unknown"),
+            LogEntry::Message(msg) => write!(f, "{}", msg),
         }
     }
 }
@@ -48,7 +108,7 @@ pub struct AstroMonitorApp {
     monitor: Monitor,
     packets: Vec<Vec<u8>>,
     packet_index: usize,
-    logs: VecDeque<String>,
+    logs: VecDeque<LogEntry>,
     alerts: VecDeque<(AlertLevel, String)>,
     alert_counts: [usize; 3], // [Info, Warning, Critical]
     last_update: Instant,
@@ -345,15 +405,13 @@ impl eframe::App for AstroMonitorApp {
                                 })
                                 .clicked()
                             {
-                                // Bolt Optimization: Pre-calculate size and write to single buffer to avoid O(N) allocations
-                                let total_len = self.logs.iter().map(|s| s.len()).sum::<usize>()
-                                    + self.logs.len().saturating_sub(1);
-                                let mut all_logs = String::with_capacity(total_len);
+                                // Bolt Optimization: Pre-calculate size estimate and write to single buffer
+                                let mut all_logs = String::with_capacity(self.logs.len() * 80);
                                 for (i, log) in self.logs.iter().enumerate() {
                                     if i > 0 {
                                         all_logs.push('\n');
                                     }
-                                    all_logs.push_str(log);
+                                    let _ = write!(all_logs, "{}", log);
                                 }
                                 ui.output_mut(|o| o.copied_text = all_logs);
                                 self.last_log_copy_time = Some(Instant::now());
@@ -390,10 +448,12 @@ impl eframe::App for AstroMonitorApp {
                                             ui.visuals().faint_bg_color,
                                         );
                                     }
+                                    // Bolt Optimization: Format on demand only for visible rows
+                                    let text = self.logs[i].to_string();
                                     // Ensure fixed height by disabling wrap/truncating
-                                    ui.add(egui::Label::new(&self.logs[i]).truncate())
+                                    ui.add(egui::Label::new(&text).truncate())
                                         .on_hover_ui(|ui| {
-                                            ui.label(&self.logs[i]);
+                                            ui.label(text);
                                         });
                                 }
                             });
@@ -712,9 +772,12 @@ impl AstroMonitorApp {
         }
     }
 
-    fn add_to_log(logs: &mut VecDeque<String>, args: std::fmt::Arguments<'_>) {
+    fn add_log_message(logs: &mut VecDeque<LogEntry>, args: std::fmt::Arguments<'_>) {
         let mut buffer = if logs.len() >= MAX_LOGS {
-            logs.pop_front().unwrap_or_default()
+            match logs.pop_front() {
+                Some(LogEntry::Message(s)) => s,
+                _ => String::with_capacity(128),
+            }
         } else {
             // Bolt Optimization: Pre-allocate buffer to avoid multiple reallocations during formatting
             String::with_capacity(128)
@@ -722,12 +785,19 @@ impl AstroMonitorApp {
         buffer.clear();
         // Bolt Optimization: Write directly to recycled buffer to avoid allocation
         let _ = std::fmt::write(&mut buffer, args);
-        logs.push_back(buffer);
+        logs.push_back(LogEntry::Message(buffer));
+    }
+
+    fn add_log_packet(logs: &mut VecDeque<LogEntry>, entry: LogEntry) {
+        if logs.len() >= MAX_LOGS {
+            logs.pop_front();
+        }
+        logs.push_back(entry);
     }
 
     // Bolt Optimization: Static processing function to allow split borrowing
     fn process_result(
-        logs: &mut VecDeque<String>,
+        logs: &mut VecDeque<LogEntry>,
         alerts: &mut VecDeque<(AlertLevel, String)>,
         alert_counts: &mut [usize; 3],
         monitor: &Monitor,
@@ -742,38 +812,24 @@ impl AstroMonitorApp {
                 let m = (ts / 60) % 60;
                 let h = (ts / 3600) % 24;
 
-                // Bolt Optimization: Use CompactPayload to reduce log string size and formatting overhead.
-                // Replaces verbose debug output (Power { ... }) with compact representation (Power(...))
-                if let Some(idx) = index {
-                    Self::add_to_log(
-                        logs,
-                        format_args!(
-                            "[{:02}:{:02}:{:02}] Packet {}: {}",
-                            h,
-                            m,
-                            s,
-                            idx,
-                            CompactPayload(&packet.payload)
-                        ),
-                    );
-                } else {
-                    Self::add_to_log(
-                        logs,
-                        format_args!(
-                            "[{:02}:{:02}:{:02}] Manual Packet: {}",
-                            h,
-                            m,
-                            s,
-                            CompactPayload(&packet.payload)
-                        ),
-                    );
-                }
+                // Check for alerts before consuming payload
+                let alert_event = monitor.check(&packet);
+
+                // Bolt Optimization: Defer formatting to render time by storing packet data directly
+                Self::add_log_packet(
+                    logs,
+                    LogEntry::Packet {
+                        timestamp: packet.timestamp,
+                        index,
+                        payload: packet.payload.into(),
+                    },
+                );
 
                 // Bolt Optimization: Use `check` to get a lightweight MonitorEvent instead of `analyze`
                 // which avoids allocating a String for the alert message before it's needed.
                 // We format directly into the log and display strings, saving 1 allocation per alert.
-                if let Some(event) = monitor.check(&packet) {
-                    Self::add_to_log(
+                if let Some(event) = alert_event {
+                    Self::add_log_message(
                         logs,
                         format_args!("*** ALERT: [{:?}] {} ***", event.level, event.condition),
                     );
@@ -825,9 +881,9 @@ impl AstroMonitorApp {
             }
             Err(e) => {
                 if let Some(idx) = index {
-                    Self::add_to_log(logs, format_args!("Packet {}: Error parsing: {}", idx, e));
+                    Self::add_log_message(logs, format_args!("Packet {}: Error parsing: {}", idx, e));
                 } else {
-                    Self::add_to_log(logs, format_args!("Manual Packet: Error parsing: {}", e));
+                    Self::add_log_message(logs, format_args!("Manual Packet: Error parsing: {}", e));
                 }
             }
         }
@@ -906,10 +962,11 @@ mod tests {
         );
 
         assert_eq!(logs.len(), 1);
+        let log_str = logs[0].to_string();
         // We expect "[20:20:00]" to be at the start
-        assert!(logs[0].starts_with("[20:20:00]"));
+        assert!(log_str.starts_with("[20:20:00]"));
         // Now using compact formatting, so check for new format
-        assert!(logs[0].contains("Packet 1: Power(V:28.0"));
+        assert!(log_str.contains("Packet 1: Power(V:28.0"));
 
         // Now test alert formatting (low battery)
         let packet_alert = TelemetryPacket {
