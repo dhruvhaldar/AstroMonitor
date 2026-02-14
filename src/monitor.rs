@@ -9,7 +9,7 @@ pub enum AlertLevel {
     Critical,
 }
 
-#[derive(Debug, Serialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Clone, Copy)]
 pub enum AlertCondition {
     LowBattery { value: f64, threshold: f64 },
     HighTemperature { value: f64, threshold: f64 },
@@ -38,7 +38,7 @@ impl fmt::Display for AlertCondition {
     }
 }
 
-#[derive(Debug, Serialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Clone, Copy)]
 pub struct MonitorEvent {
     pub level: AlertLevel,
     pub condition: AlertCondition,

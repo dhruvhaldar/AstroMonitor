@@ -1,6 +1,7 @@
 use crate::models::{CelestialCoordinates, PowerData, ThermalData};
 use crate::{
-    simulation, AlertLevel, Monitor, Parser, ParserError, TelemetryPacket, TelemetryPayload,
+    simulation, AlertLevel, Monitor, MonitorEvent, Parser, ParserError, TelemetryPacket,
+    TelemetryPayload,
 };
 use eframe::egui;
 use std::collections::VecDeque;
@@ -57,6 +58,7 @@ enum LogEntry {
         payload: OwnedPayload,
     },
     Message(String),
+    Alert(MonitorEvent),
 }
 
 impl std::fmt::Display for LogEntry {
@@ -100,6 +102,9 @@ impl std::fmt::Display for LogEntry {
                 }
             }
             LogEntry::Message(msg) => write!(f, "{}", msg),
+            LogEntry::Alert(event) => {
+                write!(f, "*** ALERT: [{:?}] {} ***", event.level, event.condition)
+            }
         }
     }
 }
@@ -109,7 +114,7 @@ pub struct AstroMonitorApp {
     packets: Vec<Vec<u8>>,
     packet_index: usize,
     logs: VecDeque<LogEntry>,
-    alerts: VecDeque<(AlertLevel, String)>,
+    alerts: VecDeque<MonitorEvent>,
     alert_counts: [usize; 3], // [Info, Warning, Critical]
     last_update: Instant,
     simulation_delay_ms: u64,
@@ -515,15 +520,25 @@ impl eframe::App for AstroMonitorApp {
                                 .clicked()
                             {
                                 // Bolt Optimization: Pre-calculate size and write to single buffer to avoid O(N) allocations
-                                let total_len =
-                                    self.alerts.iter().map(|(_, s)| s.len()).sum::<usize>()
-                                        + self.alerts.len().saturating_sub(1);
-                                let mut all_alerts = String::with_capacity(total_len);
-                                for (i, (_, text)) in self.alerts.iter().enumerate() {
+                                let mut all_alerts = String::with_capacity(self.alerts.len() * 80);
+                                for (i, event) in self.alerts.iter().enumerate() {
                                     if i > 0 {
                                         all_alerts.push('\n');
                                     }
-                                    all_alerts.push_str(text);
+                                    let ts = event.timestamp;
+                                    let s = ts % 60;
+                                    let m = (ts / 60) % 60;
+                                    let h = (ts / 3600) % 24;
+                                    let icon = match event.level {
+                                        AlertLevel::Critical => "🔴",
+                                        AlertLevel::Warning => "⚠️",
+                                        AlertLevel::Info => "ℹ️",
+                                    };
+                                    let _ = write!(
+                                        all_alerts,
+                                        "{} [{:?}] {} (Time: {:02}:{:02}:{:02})",
+                                        icon, event.level, event.condition, h, m, s
+                                    );
                                 }
                                 ui.output_mut(|o| o.copied_text = all_alerts);
                                 self.last_alert_copy_time = Some(Instant::now());
@@ -563,8 +578,8 @@ impl eframe::App for AstroMonitorApp {
                                         );
                                     }
                                     // Bolt Optimization: Use pre-formatted string to avoid formatting in render loop
-                                    let (level, text) = &self.alerts[i];
-                                    let color = match level {
+                                    let event = self.alerts[i];
+                                    let color = match event.level {
                                         AlertLevel::Critical => egui::Color32::RED,
                                         AlertLevel::Warning => egui::Color32::YELLOW,
                                         AlertLevel::Info => egui::Color32::LIGHT_BLUE,
@@ -572,8 +587,24 @@ impl eframe::App for AstroMonitorApp {
                                     // Bolt Optimization: Override text color in visual style to avoid allocation
                                     // (RichText::new(text.clone()) would allocate a new String every frame)
                                     ui.style_mut().visuals.override_text_color = Some(color);
+
+                                    let ts = event.timestamp;
+                                    let s = ts % 60;
+                                    let m = (ts / 60) % 60;
+                                    let h = (ts / 3600) % 24;
+                                    let icon = match event.level {
+                                        AlertLevel::Critical => "🔴",
+                                        AlertLevel::Warning => "⚠️",
+                                        AlertLevel::Info => "ℹ️",
+                                    };
+                                    // Format on the fly for visible rows only
+                                    let text = format!(
+                                        "{} [{:?}] {} (Time: {:02}:{:02}:{:02})",
+                                        icon, event.level, event.condition, h, m, s
+                                    );
+
                                     // Ensure fixed height by disabling wrap/truncating
-                                    ui.add(egui::Label::new(text).truncate()).on_hover_ui(|ui| {
+                                    ui.add(egui::Label::new(&text).truncate()).on_hover_ui(|ui| {
                                         ui.label(text);
                                     });
                                     // Reset color for safety (though loop re-sets it)
@@ -822,7 +853,7 @@ impl AstroMonitorApp {
     // Bolt Optimization: Static processing function to allow split borrowing
     fn process_result(
         logs: &mut VecDeque<LogEntry>,
-        alerts: &mut VecDeque<(AlertLevel, String)>,
+        alerts: &mut VecDeque<MonitorEvent>,
         alert_counts: &mut [usize; 3],
         monitor: &Monitor,
         result: Result<TelemetryPacket<'_>, ParserError>,
@@ -831,11 +862,6 @@ impl AstroMonitorApp {
         // Bolt Optimization: Combined log message to reduce string allocations and VecDeque operations by 50%
         match result {
             Ok(packet) => {
-                let ts = packet.timestamp;
-                let s = ts % 60;
-                let m = (ts / 60) % 60;
-                let h = (ts / 3600) % 24;
-
                 // Check for alerts before consuming payload
                 let alert_event = monitor.check(&packet);
 
@@ -853,15 +879,13 @@ impl AstroMonitorApp {
                 // which avoids allocating a String for the alert message before it's needed.
                 // We format directly into the log and display strings, saving 1 allocation per alert.
                 if let Some(event) = alert_event {
-                    Self::add_log_message(
-                        logs,
-                        format_args!("*** ALERT: [{:?}] {} ***", event.level, event.condition),
-                    );
+                    // Bolt Optimization: Use LogEntry::Alert to avoid formatting string for log
+                    Self::add_log_packet(logs, LogEntry::Alert(event));
 
-                    // Bolt Optimization: String recycling for alerts
-                    let mut buffer = if alerts.len() >= MAX_ALERTS {
-                        if let Some((old_level, old_string)) = alerts.pop_front() {
-                            let old_idx = match old_level {
+                    // Bolt Optimization: Store MonitorEvent directly to avoid string formatting and allocation
+                    if alerts.len() >= MAX_ALERTS {
+                        if let Some(old_event) = alerts.pop_front() {
+                            let old_idx = match old_event.level {
                                 AlertLevel::Info => 0,
                                 AlertLevel::Warning => 1,
                                 AlertLevel::Critical => 2,
@@ -869,30 +893,8 @@ impl AstroMonitorApp {
                             if alert_counts[old_idx] > 0 {
                                 alert_counts[old_idx] -= 1;
                             }
-                            old_string
-                        } else {
-                            // Bolt Optimization: Pre-allocate buffer for alerts
-                            String::with_capacity(128)
                         }
-                    } else {
-                        // Bolt Optimization: Pre-allocate buffer for alerts
-                        String::with_capacity(128)
-                    };
-                    buffer.clear();
-
-                    // Bolt Optimization: Pre-format display text to avoid allocation in render loop
-                    let icon = match event.level {
-                        AlertLevel::Critical => "🔴",
-                        AlertLevel::Warning => "⚠️",
-                        AlertLevel::Info => "ℹ️",
-                    };
-
-                    // Write to recycled buffer
-                    let _ = write!(
-                        buffer,
-                        "{} [{:?}] {} (Time: {:02}:{:02}:{:02})",
-                        icon, event.level, event.condition, h, m, s
-                    );
+                    }
 
                     let new_idx = match event.level {
                         AlertLevel::Info => 0,
@@ -900,7 +902,7 @@ impl AstroMonitorApp {
                         AlertLevel::Critical => 2,
                     };
                     alert_counts[new_idx] += 1;
-                    alerts.push_back((event.level, buffer));
+                    alerts.push_back(event);
                 }
             }
             Err(e) => {
@@ -1014,9 +1016,16 @@ mod tests {
 
         // Alert should be generated
         assert_eq!(alerts.len(), 1);
-        let (_, alert_msg) = &alerts[0];
-        // Alert message should contain formatted time
-        assert!(alert_msg.contains("(Time: 20:20:00)"));
+        let event = &alerts[0];
+        // Check event data instead of formatted string (formatting moved to render)
+        assert_eq!(event.timestamp, timestamp);
+        assert_eq!(event.level, AlertLevel::Critical);
+
+        // Check that Alert was added to logs
+        // Packet 1 (previous call) + Packet 2 + Alert = 3 logs
+        assert_eq!(logs.len(), 3);
+        let alert_log_str = logs[2].to_string();
+        assert!(alert_log_str.contains("*** ALERT: [Critical]"));
     }
 
     #[test]
