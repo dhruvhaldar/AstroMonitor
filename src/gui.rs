@@ -130,6 +130,8 @@ pub struct AstroMonitorApp {
     // Feedback state
     last_log_copy_time: Option<Instant>,
     last_alert_copy_time: Option<Instant>,
+    last_log_clear_time: Option<Instant>,
+    last_alert_clear_time: Option<Instant>,
     last_injection_time: Option<Instant>,
     restart_confirm_time: Option<Instant>,
 
@@ -174,6 +176,8 @@ impl Default for AstroMonitorApp {
             progress_text,
             last_log_copy_time: None,
             last_alert_copy_time: None,
+            last_log_clear_time: None,
+            last_alert_clear_time: None,
             last_injection_time: None,
             restart_confirm_time: None,
 
@@ -381,14 +385,24 @@ impl eframe::App for AstroMonitorApp {
                     ui.horizontal(|ui| {
                         ui.heading(format!("System Logs ({})", self.logs.len()));
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            let (clear_icon, clear_tooltip) = if let Some(_t) = self
+                                .last_log_clear_time
+                                .filter(|t| t.elapsed().as_secs() < 2)
+                            {
+                                ("✔", "Cleared!")
+                            } else {
+                                ("🗑", "Clear logs")
+                            };
                             if ui
-                                .button("🗑")
+                                .button(clear_icon)
                                 .on_hover_ui(|ui| {
-                                    ui.label("Clear logs");
+                                    ui.label(clear_tooltip);
                                 })
                                 .clicked()
                             {
                                 self.logs.clear();
+                                self.last_log_clear_time = Some(Instant::now());
+                                ui.ctx().request_repaint_after(Duration::from_secs(2));
                             }
                             let (icon, tooltip) = if let Some(_t) = self
                                 .last_log_copy_time
@@ -465,15 +479,25 @@ impl eframe::App for AstroMonitorApp {
                     ui.horizontal(|ui| {
                         ui.heading(format!("Active Alerts ({})", self.alerts.len()));
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            let (clear_icon, clear_tooltip) = if let Some(_t) = self
+                                .last_alert_clear_time
+                                .filter(|t| t.elapsed().as_secs() < 2)
+                            {
+                                ("✔", "Cleared!")
+                            } else {
+                                ("🗑", "Clear alerts")
+                            };
                             if ui
-                                .button("🗑")
+                                .button(clear_icon)
                                 .on_hover_ui(|ui| {
-                                    ui.label("Clear alerts");
+                                    ui.label(clear_tooltip);
                                 })
                                 .clicked()
                             {
                                 self.alerts.clear();
                                 self.alert_counts = [0, 0, 0];
+                                self.last_alert_clear_time = Some(Instant::now());
+                                ui.ctx().request_repaint_after(Duration::from_secs(2));
                             }
                             let (icon, tooltip) = if let Some(_t) = self
                                 .last_alert_copy_time
