@@ -40,10 +40,17 @@ impl Parser {
         offset += 1;
 
         // Payload Length (2 bytes)
-        let _len_bytes: [u8; 2] = data[offset..offset + 2]
+        let len_bytes: [u8; 2] = data[offset..offset + 2]
             .try_into()
             .map_err(|_| ParserError::BufferTooShort)?;
+        let payload_len = u16::from_be_bytes(len_bytes) as usize;
         offset += 2;
+
+        if data.len() < offset + payload_len {
+            return Err(ParserError::BufferTooShort);
+        }
+        // Restrict subsequent reads to the declared packet length
+        let data = &data[..offset + payload_len];
 
         let (subsystem, payload) = match subsystem_id {
             0 => {
@@ -154,5 +161,52 @@ impl Parser {
             subsystem,
             payload,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parser_enforces_length() {
+        // Create a Power packet with Length = 0, but valid payload data following.
+        // Parser should now enforce the length and see 0 bytes of payload,
+        // causing the Power parser to fail (expecting 24 bytes).
+        let mut packet = Vec::new();
+        packet.extend_from_slice(&(1234567890u64).to_be_bytes()); // Timestamp
+        packet.push(0); // Subsystem: Power
+        packet.extend_from_slice(&(0u16).to_be_bytes()); // Length = 0 (MALFORMED)
+
+        // Payload (24 bytes) - should be ignored due to Length=0
+        packet.extend_from_slice(&(28.0f64).to_be_bytes());
+        packet.extend_from_slice(&(2.5f64).to_be_bytes());
+        packet.extend_from_slice(&(90.0f64).to_be_bytes());
+
+        // Attempt to parse
+        let result = Parser::parse(&packet);
+
+        assert!(result.is_err(), "Parser should reject packet with mismatched length");
+    }
+
+    #[test]
+    fn test_parser_ignores_garbage_suffix() {
+        let mut packet = Vec::new();
+        packet.extend_from_slice(&(1234567890u64).to_be_bytes()); // Timestamp
+        packet.push(0); // Subsystem: Power
+        packet.extend_from_slice(&(24u16).to_be_bytes()); // Length = 24
+
+        // Payload (24 bytes)
+        packet.extend_from_slice(&(28.0f64).to_be_bytes());
+        packet.extend_from_slice(&(2.5f64).to_be_bytes());
+        packet.extend_from_slice(&(90.0f64).to_be_bytes());
+
+        // Garbage
+        packet.extend_from_slice(&[0xFF; 100]);
+
+        // Attempt to parse
+        let result = Parser::parse(&packet);
+
+        assert!(result.is_ok());
     }
 }
