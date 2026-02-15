@@ -25,3 +25,7 @@
 ## 2025-06-15 - Header Information Density
 **Learning:** Users monitor lists (Logs/Alerts) more effectively when headers provide quantitative context. A simple count in the header allows users to assess system activity volume without needing to scroll or decipher empty states.
 **Action:** Append counts to list headers (e.g., "Logs (12)") to provide immediate, high-level status visibility.
+
+## 2025-07-22 - Icon-Only Button Safety
+**Learning:** Icon-only buttons (like Trash 🗑) are high-risk for accidental clicks because they lack descriptive text and occupy small targets. Applying the 'Click-to-Confirm' pattern with a distinct icon change (e.g., to ⚠) is crucial for safety without sacrificing space.
+**Action:** For all destructive icon-only buttons, implement a 2-step confirmation with icon swap to prevent data loss.
