@@ -40,11 +40,13 @@ impl<'a> From<TelemetryPayload<'a>> for OwnedPayload {
         match tp {
             TelemetryPayload::Power(d) => OwnedPayload::Power(d),
             TelemetryPayload::Thermal(d) => OwnedPayload::Thermal(d),
-            TelemetryPayload::StarTracker(d) => OwnedPayload::StarTracker(OwnedStarTrackerReading {
-                target_id: d.target_id.map(|cow| cow.into_owned()),
-                coordinates: d.coordinates,
-                confidence: d.confidence,
-            }),
+            TelemetryPayload::StarTracker(d) => {
+                OwnedPayload::StarTracker(OwnedStarTrackerReading {
+                    target_id: d.target_id.map(|cow| cow.into_owned()),
+                    coordinates: d.coordinates,
+                    confidence: d.confidence,
+                })
+            }
             TelemetryPayload::Unknown => OwnedPayload::Unknown,
         }
     }
@@ -309,8 +311,9 @@ impl eframe::App for AstroMonitorApp {
                         self.last_update = Instant::now();
                     }
                 }
-                let restart_clicked = if let Some(_t) =
-                    self.restart_confirm_time.filter(|t| t.elapsed().as_secs() < 3)
+                let restart_clicked = if let Some(_t) = self
+                    .restart_confirm_time
+                    .filter(|t| t.elapsed().as_secs() < 3)
                 {
                     let btn = ui.add(
                         egui::Button::new(
@@ -604,9 +607,10 @@ impl eframe::App for AstroMonitorApp {
                                     );
 
                                     // Ensure fixed height by disabling wrap/truncating
-                                    ui.add(egui::Label::new(&text).truncate()).on_hover_ui(|ui| {
-                                        ui.label(text);
-                                    });
+                                    ui.add(egui::Label::new(&text).truncate())
+                                        .on_hover_ui(|ui| {
+                                            ui.label(text);
+                                        });
                                     // Reset color for safety (though loop re-sets it)
                                     ui.style_mut().visuals.override_text_color = None;
                                 }
@@ -675,10 +679,9 @@ impl eframe::App for AstroMonitorApp {
                         });
                         if self.input_battery < self.monitor.min_battery_level {
                             // Bolt Optimization: Use colored_label to avoid RichText allocation
-                            ui.colored_label(egui::Color32::RED, "⚠")
-                                .on_hover_ui(|ui| {
-                                    ui.label(&self.cached_battery_tooltip);
-                                });
+                            ui.colored_label(egui::Color32::RED, "⚠").on_hover_ui(|ui| {
+                                ui.label(&self.cached_battery_tooltip);
+                            });
                         }
                     });
                 }
@@ -907,9 +910,15 @@ impl AstroMonitorApp {
             }
             Err(e) => {
                 if let Some(idx) = index {
-                    Self::add_log_message(logs, format_args!("Packet {}: Error parsing: {}", idx, e));
+                    Self::add_log_message(
+                        logs,
+                        format_args!("Packet {}: Error parsing: {}", idx, e),
+                    );
                 } else {
-                    Self::add_log_message(logs, format_args!("Manual Packet: Error parsing: {}", e));
+                    Self::add_log_message(
+                        logs,
+                        format_args!("Manual Packet: Error parsing: {}", e),
+                    );
                 }
             }
         }
@@ -939,15 +948,28 @@ impl AstroMonitorApp {
             }
             InputSubsystem::StarTracker => {
                 packet.push(3); // Subsystem ID
-                                // Calculate len: 3*8 (f64) + 1 (u8) + target.len()
-                let len = 24 + 1 + self.input_target.len() as u16;
+
+                // Security Fix: Ensure target_id length fits in u8 (max 255 bytes)
+                // Truncate to 255 bytes while respecting UTF-8 boundaries
+                let mut target_bytes = self.input_target.as_bytes();
+                if target_bytes.len() > 255 {
+                    // Find the last valid char boundary before/at 255
+                    let mut limit = 255;
+                    while limit > 0 && !self.input_target.is_char_boundary(limit) {
+                        limit -= 1;
+                    }
+                    target_bytes = &target_bytes[..limit];
+                }
+
+                // Calculate len: 3*8 (f64) + 1 (u8) + target_bytes.len()
+                let len = 24 + 1 + target_bytes.len() as u16;
                 packet.extend_from_slice(&len.to_be_bytes()); // Len
 
                 packet.extend_from_slice(&self.input_ra.to_be_bytes());
                 packet.extend_from_slice(&self.input_dec.to_be_bytes());
                 packet.extend_from_slice(&self.input_confidence.to_be_bytes());
-                packet.push(self.input_target.len() as u8);
-                packet.extend_from_slice(self.input_target.as_bytes());
+                packet.push(target_bytes.len() as u8);
+                packet.extend_from_slice(target_bytes);
             }
         }
         packet
@@ -1026,6 +1048,46 @@ mod tests {
         assert_eq!(logs.len(), 3);
         let alert_log_str = logs[2].to_string();
         assert!(alert_log_str.contains("*** ALERT: [Critical]"));
+    }
+
+    #[test]
+    fn test_create_manual_packet_truncation() {
+        let mut app = AstroMonitorApp::default();
+        app.input_subsystem = InputSubsystem::StarTracker;
+
+        // Create a string longer than 255 bytes
+        let long_id = "a".repeat(300);
+        app.input_target = long_id.clone();
+
+        let packet = app.create_manual_packet();
+
+        // Packet structure:
+        // Timestamp (8) + Subsystem (1) + Len (2) + RA (8) + Dec (8) + Conf (8) + ID_Len (1) + ID (...)
+        // Header = 11 bytes.
+        // Payload start at 11.
+        // RA/Dec/Conf = 24 bytes.
+        // ID_Len at 11 + 24 = 35.
+
+        let id_len_byte = packet[35];
+
+        // Without fix, this would be 300 % 256 = 44.
+        // With fix, it should be 255.
+
+        // Also check the packet length header.
+        // Len field is at index 9 (2 bytes).
+        let len_bytes: [u8; 2] = packet[9..11].try_into().unwrap();
+        let payload_len = u16::from_be_bytes(len_bytes);
+
+        // Payload should be 24 + 1 + id_len.
+        // If truncated: 24 + 1 + 255 = 280.
+        // If not truncated: 24 + 1 + 300 = 325.
+
+        assert_eq!(id_len_byte, 255, "ID length byte should be capped at 255");
+        assert_eq!(
+            payload_len, 280,
+            "Payload length should reflect truncated size"
+        );
+        assert_eq!(packet.len(), 11 + 280, "Total packet size should match");
     }
 
     #[test]

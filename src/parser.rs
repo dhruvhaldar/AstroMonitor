@@ -186,7 +186,10 @@ mod tests {
         // Attempt to parse
         let result = Parser::parse(&packet);
 
-        assert!(result.is_err(), "Parser should reject packet with mismatched length");
+        assert!(
+            result.is_err(),
+            "Parser should reject packet with mismatched length"
+        );
     }
 
     #[test]

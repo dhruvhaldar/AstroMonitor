@@ -36,7 +36,7 @@ fn test_parse_star_tracker() {
     let timestamp: u64 = 1627849200;
     data.extend_from_slice(&timestamp.to_be_bytes());
     data.push(3); // Subsystem: StarTracker
-    // RA(8) + Dec(8) + Conf(8) + ID_Len(1) + ID(13) = 38 bytes
+                  // RA(8) + Dec(8) + Conf(8) + ID_Len(1) + ID(13) = 38 bytes
     data.extend_from_slice(&(38u16).to_be_bytes());
 
     let ra = 120.5f64;
