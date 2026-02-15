@@ -139,6 +139,8 @@ pub struct AstroMonitorApp {
     last_alert_clear_time: Option<Instant>,
     last_injection_time: Option<Instant>,
     restart_confirm_time: Option<Instant>,
+    log_clear_confirm: Option<Instant>,
+    alert_clear_confirm: Option<Instant>,
 
     // Cached Tooltips (Bolt Optimization)
     // Note: These must be updated if `monitor` thresholds are changed at runtime.
@@ -185,6 +187,8 @@ impl Default for AstroMonitorApp {
             last_alert_clear_time: None,
             last_injection_time: None,
             restart_confirm_time: None,
+            log_clear_confirm: None,
+            alert_clear_confirm: None,
 
             cached_battery_tooltip,
             cached_temp_tooltip,
@@ -390,24 +394,46 @@ impl eframe::App for AstroMonitorApp {
                     ui.horizontal(|ui| {
                         ui.heading(format!("System Logs ({})", self.logs.len()));
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            let (clear_icon, clear_tooltip) = if let Some(_t) = self
-                                .last_log_clear_time
-                                .filter(|t| t.elapsed().as_secs() < 2)
+                            let (clear_icon, clear_tooltip, confirm_mode) = if let Some(_t) =
+                                self.log_clear_confirm.filter(|t| t.elapsed().as_secs() < 3)
                             {
-                                ("✔", "Cleared!")
+                                ("⚠", "Click again to confirm clear logs", true)
+                            } else if let Some(_t) =
+                                self.last_log_clear_time.filter(|t| t.elapsed().as_secs() < 2)
+                            {
+                                ("✔", "Cleared!", false)
                             } else {
-                                ("🗑", "Clear logs")
+                                ("🗑", "Clear logs", false)
                             };
-                            if ui
-                                .button(clear_icon)
+
+                            let btn = if confirm_mode {
+                                ui.add(
+                                    egui::Button::new(
+                                        egui::RichText::new(clear_icon).color(egui::Color32::RED),
+                                    )
+                                    .fill(egui::Color32::from_rgb(50, 0, 0)),
+                                )
+                            } else {
+                                ui.button(clear_icon)
+                            };
+
+                            if btn
                                 .on_hover_ui(|ui| {
                                     ui.label(clear_tooltip);
                                 })
                                 .clicked()
                             {
-                                self.logs.clear();
-                                self.last_log_clear_time = Some(Instant::now());
-                                ui.ctx().request_repaint_after(Duration::from_secs(2));
+                                if confirm_mode {
+                                    self.logs.clear();
+                                    self.log_clear_confirm = None;
+                                    self.last_log_clear_time = Some(Instant::now());
+                                    ui.ctx().request_repaint_after(Duration::from_secs(2));
+                                } else if self.last_log_clear_time.is_none()
+                                    || self.last_log_clear_time.unwrap().elapsed().as_secs() >= 2
+                                {
+                                    self.log_clear_confirm = Some(Instant::now());
+                                    ui.ctx().request_repaint();
+                                }
                             }
                             let (icon, tooltip) = if let Some(_t) = self
                                 .last_log_copy_time
@@ -484,25 +510,47 @@ impl eframe::App for AstroMonitorApp {
                     ui.horizontal(|ui| {
                         ui.heading(format!("Active Alerts ({})", self.alerts.len()));
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            let (clear_icon, clear_tooltip) = if let Some(_t) = self
-                                .last_alert_clear_time
-                                .filter(|t| t.elapsed().as_secs() < 2)
+                            let (clear_icon, clear_tooltip, confirm_mode) = if let Some(_t) =
+                                self.alert_clear_confirm.filter(|t| t.elapsed().as_secs() < 3)
                             {
-                                ("✔", "Cleared!")
+                                ("⚠", "Click again to confirm clear alerts", true)
+                            } else if let Some(_t) =
+                                self.last_alert_clear_time.filter(|t| t.elapsed().as_secs() < 2)
+                            {
+                                ("✔", "Cleared!", false)
                             } else {
-                                ("🗑", "Clear alerts")
+                                ("🗑", "Clear alerts", false)
                             };
-                            if ui
-                                .button(clear_icon)
+
+                            let btn = if confirm_mode {
+                                ui.add(
+                                    egui::Button::new(
+                                        egui::RichText::new(clear_icon).color(egui::Color32::RED),
+                                    )
+                                    .fill(egui::Color32::from_rgb(50, 0, 0)),
+                                )
+                            } else {
+                                ui.button(clear_icon)
+                            };
+
+                            if btn
                                 .on_hover_ui(|ui| {
                                     ui.label(clear_tooltip);
                                 })
                                 .clicked()
                             {
-                                self.alerts.clear();
-                                self.alert_counts = [0, 0, 0];
-                                self.last_alert_clear_time = Some(Instant::now());
-                                ui.ctx().request_repaint_after(Duration::from_secs(2));
+                                if confirm_mode {
+                                    self.alerts.clear();
+                                    self.alert_counts = [0, 0, 0];
+                                    self.alert_clear_confirm = None;
+                                    self.last_alert_clear_time = Some(Instant::now());
+                                    ui.ctx().request_repaint_after(Duration::from_secs(2));
+                                } else if self.last_alert_clear_time.is_none()
+                                    || self.last_alert_clear_time.unwrap().elapsed().as_secs() >= 2
+                                {
+                                    self.alert_clear_confirm = Some(Instant::now());
+                                    ui.ctx().request_repaint();
+                                }
                             }
                             let (icon, tooltip) = if let Some(_t) = self
                                 .last_alert_copy_time
