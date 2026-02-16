@@ -42,6 +42,14 @@ impl LogEntry {
             LogEntry::Alert(s) => s,
         }
     }
+
+    fn into_string(self) -> String {
+        match self {
+            LogEntry::Packet(s) => s,
+            LogEntry::Message(s) => s,
+            LogEntry::Alert(s) => s,
+        }
+    }
 }
 
 pub struct AstroMonitorApp {
@@ -811,13 +819,25 @@ impl AstroMonitorApp {
         }
     }
 
+    // Bolt Optimization: Helper to recycle string buffers from full log queue
+    fn get_recycled_log_buffer(logs: &mut VecDeque<LogEntry>) -> String {
+        if logs.len() >= MAX_LOGS {
+            if let Some(entry) = logs.pop_front() {
+                let mut s = entry.into_string();
+                s.clear();
+                return s;
+            }
+        }
+        String::with_capacity(128)
+    }
+
     // Bolt Optimization: Pre-format log packets to avoid formatting in render loop
     fn format_log_packet(
+        f: &mut String,
         timestamp: u64,
         index: Option<usize>,
         payload: &TelemetryPayload<'_>,
-    ) -> String {
-        let mut f = String::with_capacity(128);
+    ) {
         let s = timestamp % 60;
         let m = (timestamp / 60) % 60;
         let h = (timestamp / 3600) % 24;
@@ -855,34 +875,17 @@ impl AstroMonitorApp {
                 let _ = write!(f, "Unknown");
             }
         }
-        f
     }
 
-    fn format_log_alert(event: &MonitorEvent) -> String {
-        format!("*** ALERT: [{:?}] {} ***", event.level, event.condition)
+    fn format_log_alert(f: &mut String, event: &MonitorEvent) {
+        let _ = write!(f, "*** ALERT: [{:?}] {} ***", event.level, event.condition);
     }
 
     fn add_log_message(logs: &mut VecDeque<LogEntry>, args: std::fmt::Arguments<'_>) {
-        let mut buffer = if logs.len() >= MAX_LOGS {
-            match logs.pop_front() {
-                Some(LogEntry::Message(s)) => s,
-                _ => String::with_capacity(128),
-            }
-        } else {
-            // Bolt Optimization: Pre-allocate buffer to avoid multiple reallocations during formatting
-            String::with_capacity(128)
-        };
-        buffer.clear();
+        let mut buffer = Self::get_recycled_log_buffer(logs);
         // Bolt Optimization: Write directly to recycled buffer to avoid allocation
         let _ = std::fmt::write(&mut buffer, args);
         logs.push_back(LogEntry::Message(buffer));
-    }
-
-    fn add_log_packet(logs: &mut VecDeque<LogEntry>, entry: LogEntry) {
-        if logs.len() >= MAX_LOGS {
-            logs.pop_front();
-        }
-        logs.push_back(entry);
     }
 
     // Bolt Optimization: Static processing function to allow split borrowing
@@ -904,16 +907,18 @@ impl AstroMonitorApp {
                 // This replaces the previous "defer" strategy because caching the formatted string
                 // avoids re-formatting every frame in the render loop (huge win),
                 // and avoids converting to OwnedPayload (allocating Strings for StarTracker).
-                let packet_text = Self::format_log_packet(packet.timestamp, index, &packet.payload);
-                Self::add_log_packet(logs, LogEntry::Packet(packet_text));
+                let mut packet_text = Self::get_recycled_log_buffer(logs);
+                Self::format_log_packet(&mut packet_text, packet.timestamp, index, &packet.payload);
+                logs.push_back(LogEntry::Packet(packet_text));
 
                 // Bolt Optimization: Use `check` to get a lightweight MonitorEvent instead of `analyze`
                 // which avoids allocating a String for the alert message before it's needed.
                 // We format directly into the log and display strings, saving 1 allocation per alert.
                 if let Some(event) = alert_event {
                     // Bolt Optimization: Format alert string immediately for log
-                    let alert_text = Self::format_log_alert(&event);
-                    Self::add_log_packet(logs, LogEntry::Alert(alert_text));
+                    let mut alert_text = Self::get_recycled_log_buffer(logs);
+                    Self::format_log_alert(&mut alert_text, &event);
+                    logs.push_back(LogEntry::Alert(alert_text));
 
                     // Bolt Optimization: Store MonitorEvent directly to avoid string formatting and allocation
                     if alerts.len() >= MAX_ALERTS {
