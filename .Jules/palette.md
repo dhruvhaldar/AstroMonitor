@@ -29,3 +29,7 @@
 ## 2025-07-22 - Icon-Only Button Safety
 **Learning:** Icon-only buttons (like Trash 🗑) are high-risk for accidental clicks because they lack descriptive text and occupy small targets. Applying the 'Click-to-Confirm' pattern with a distinct icon change (e.g., to ⚠) is crucial for safety without sacrificing space.
 **Action:** For all destructive icon-only buttons, implement a 2-step confirmation with icon swap to prevent data loss.
+
+## 2025-08-14 - Testing Presets
+**Learning:** In manual testing interfaces, users fatigue quickly from repetitive data entry. Providing "Quick Presets" for Nominal and Alert states drastically reduces friction and improves testing velocity.
+**Action:** For all manual input forms designed for testing/simulation, include "Nominal" and "Trigger Alert" preset buttons to pre-fill fields with safe/unsafe values.
