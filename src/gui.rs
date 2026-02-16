@@ -627,6 +627,25 @@ impl eframe::App for AstroMonitorApp {
                 });
             });
 
+            // Palette UX Enhancement: Quick Presets
+            ui.horizontal(|ui| {
+                ui.label(egui::RichText::new("Presets:").strong());
+                if ui
+                    .button("Nominal 🟢")
+                    .on_hover_text("Set inputs to safe, nominal values")
+                    .clicked()
+                {
+                    self.apply_preset(false);
+                }
+                if ui
+                    .button("Trigger Alert ⚠")
+                    .on_hover_text("Set inputs to values that will trigger an alert based on current thresholds")
+                    .clicked()
+                {
+                    self.apply_preset(true);
+                }
+            });
+
             match self.input_subsystem {
                 InputSubsystem::Power => {
                     ui.horizontal(|ui| {
@@ -954,6 +973,49 @@ impl AstroMonitorApp {
         }
     }
 
+    fn apply_preset(&mut self, trigger_alert: bool) {
+        if trigger_alert {
+            match self.input_subsystem {
+                InputSubsystem::Power => {
+                    // Trigger Critical Low Battery
+                    self.input_battery = self.monitor.min_battery_level - 5.0;
+                    if self.input_battery < 0.0 {
+                        self.input_battery = 0.0;
+                    }
+                }
+                InputSubsystem::Thermal => {
+                    // Trigger Warning High Temp
+                    self.input_temp = self.monitor.max_temp_celsius + 5.0;
+                }
+                InputSubsystem::StarTracker => {
+                    // Trigger Info Low Confidence
+                    self.input_confidence = self.monitor.min_star_confidence - 0.1;
+                    if self.input_confidence < 0.0 {
+                        self.input_confidence = 0.0;
+                    }
+                }
+            }
+        } else {
+            // Nominal
+            match self.input_subsystem {
+                InputSubsystem::Power => {
+                    self.input_voltage = 28.0;
+                    self.input_current = 2.5;
+                    self.input_battery = 95.0;
+                }
+                InputSubsystem::Thermal => {
+                    self.input_temp = 25.0;
+                }
+                InputSubsystem::StarTracker => {
+                    self.input_ra = 0.0;
+                    self.input_dec = 0.0;
+                    self.input_confidence = 1.0;
+                    self.input_target = "Sirius".to_string();
+                }
+            }
+        }
+    }
+
     fn create_manual_packet(&self) -> Vec<u8> {
         // Bolt Optimization: Pre-allocate vector to avoid reallocations during packet construction
         let mut packet = Vec::with_capacity(256);
@@ -1152,5 +1214,36 @@ mod tests {
         // 45 packets left * 2000ms = 90s = 1m 30s
         AstroMonitorApp::format_progress_text(&mut buffer, 55, 100, 2000);
         assert_eq!(buffer, "55/100 (55%) - 1m 30s left");
+    }
+
+    #[test]
+    fn test_apply_preset() {
+        let mut app = AstroMonitorApp::default();
+
+        // 1. Power Subsystem
+        app.input_subsystem = InputSubsystem::Power;
+        app.apply_preset(false); // Nominal
+        assert_eq!(app.input_voltage, 28.0);
+        assert_eq!(app.input_battery, 95.0);
+
+        app.apply_preset(true); // Alert
+        assert_eq!(app.input_battery, app.monitor.min_battery_level - 5.0);
+
+        // 2. Thermal Subsystem
+        app.input_subsystem = InputSubsystem::Thermal;
+        app.apply_preset(false); // Nominal
+        assert_eq!(app.input_temp, 25.0);
+
+        app.apply_preset(true); // Alert
+        assert_eq!(app.input_temp, app.monitor.max_temp_celsius + 5.0);
+
+        // 3. StarTracker Subsystem
+        app.input_subsystem = InputSubsystem::StarTracker;
+        app.apply_preset(false); // Nominal
+        assert_eq!(app.input_confidence, 1.0);
+        assert_eq!(app.input_target, "Sirius");
+
+        app.apply_preset(true); // Alert
+        assert_eq!(app.input_confidence, app.monitor.min_star_confidence - 0.1);
     }
 }
