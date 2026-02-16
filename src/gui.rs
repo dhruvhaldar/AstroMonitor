@@ -866,7 +866,8 @@ impl AstroMonitorApp {
                     d.coordinates.right_ascension, d.coordinates.declination, d.confidence
                 );
                 if let Some(id) = &d.target_id {
-                    let _ = write!(f, " ID:{}", id);
+                    // Security Fix: Sanitize ID to prevent Log Injection
+                    let _ = write!(f, " ID:{}", id.escape_debug());
                 }
                 let _ = write!(f, ")");
             }
@@ -1245,5 +1246,47 @@ mod tests {
 
         app.apply_preset(true); // Alert
         assert_eq!(app.input_confidence, app.monitor.min_star_confidence - 0.1);
+    }
+}
+
+#[cfg(test)]
+mod security_tests {
+    use super::*;
+    use crate::models::{CelestialCoordinates, StarTrackerReading, Subsystem, TelemetryPayload};
+    use std::borrow::Cow;
+
+    #[test]
+    fn test_log_injection_sanitization() {
+        // Construct a packet with a newline in the target ID
+        let malicious_id = "Sirius\n[FAKE LOG] Critical Error";
+        let packet = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::StarTracker,
+            payload: TelemetryPayload::StarTracker(StarTrackerReading {
+                target_id: Some(Cow::Borrowed(malicious_id)),
+                coordinates: CelestialCoordinates {
+                    right_ascension: 0.0,
+                    declination: 0.0,
+                },
+                confidence: 1.0,
+            }),
+        };
+
+        // Format the log packet
+        let log_output =
+            AstroMonitorApp::format_log_packet(packet.timestamp, Some(1), &packet.payload);
+
+        // Assert that the newline is ESCAPED (vulnerability fixed)
+        assert!(!log_output.contains('\n'), "Security Check Failed: Log output contains a raw newline! Log Injection Vulnerability Present.");
+        // The output should contain the escaped form "\n" (backslash n)
+        // Note: In Rust string literal, "\\n" represents "\n".
+        assert!(
+            log_output.contains("\\n"),
+            "Log output should contain escaped newline (\\n)"
+        );
+        assert!(
+            log_output.contains("[FAKE LOG]"),
+            "Log output should still contain the text content"
+        );
     }
 }
