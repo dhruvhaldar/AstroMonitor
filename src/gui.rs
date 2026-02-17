@@ -1106,6 +1106,7 @@ impl AstroMonitorApp {
                 packet.extend_from_slice(target_bytes);
             }
         }
+        packet.push(simulation::calculate_checksum(&packet));
         packet
     }
 }
@@ -1221,7 +1222,8 @@ mod tests {
             payload_len, 280,
             "Payload length should reflect truncated size"
         );
-        assert_eq!(packet.len(), 11 + 280, "Total packet size should match");
+        // 11 (Header) + 280 (Payload) + 1 (Checksum)
+        assert_eq!(packet.len(), 11 + 280 + 1, "Total packet size should match");
     }
 
     #[test]

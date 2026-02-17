@@ -16,6 +16,8 @@ fn test_parse_power() {
     data.extend_from_slice(&current.to_be_bytes());
     data.extend_from_slice(&battery.to_be_bytes());
 
+    data.push(simulation::calculate_checksum(&data));
+
     let result = Parser::parse(&data).unwrap();
 
     assert_eq!(result.timestamp, timestamp);
@@ -49,6 +51,8 @@ fn test_parse_star_tracker() {
     data.extend_from_slice(&conf.to_be_bytes());
     data.push(target_id.len() as u8);
     data.extend_from_slice(target_id.as_bytes());
+
+    data.push(simulation::calculate_checksum(&data));
 
     let result = Parser::parse(&data).unwrap();
 

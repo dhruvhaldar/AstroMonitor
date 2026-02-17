@@ -1,3 +1,11 @@
+pub fn calculate_checksum(data: &[u8]) -> u8 {
+    let mut checksum = 0;
+    for &byte in data {
+        checksum ^= byte;
+    }
+    checksum
+}
+
 pub fn generate_simulated_packets() -> Vec<Vec<u8>> {
     let mut packets = Vec::new();
 
@@ -9,6 +17,7 @@ pub fn generate_simulated_packets() -> Vec<Vec<u8>> {
     p1.extend_from_slice(&(28.0f64).to_be_bytes()); // Voltage
     p1.extend_from_slice(&(2.5f64).to_be_bytes()); // Current
     p1.extend_from_slice(&(90.0f64).to_be_bytes()); // Battery
+    p1.push(calculate_checksum(&p1));
     packets.push(p1);
 
     // 2. Thermal Packet (High Temp)
@@ -17,6 +26,7 @@ pub fn generate_simulated_packets() -> Vec<Vec<u8>> {
     p2.push(1); // Subsystem: Thermal
     p2.extend_from_slice(&(8u16).to_be_bytes());
     p2.extend_from_slice(&(85.5f64).to_be_bytes()); // Temp > 80 (Threshold)
+    p2.push(calculate_checksum(&p2));
     packets.push(p2);
 
     // 3. Star Tracker Packet (Good Confidence)
@@ -30,6 +40,7 @@ pub fn generate_simulated_packets() -> Vec<Vec<u8>> {
     let target = "Sirius";
     p3.push(target.len() as u8);
     p3.extend_from_slice(target.as_bytes());
+    p3.push(calculate_checksum(&p3));
     packets.push(p3);
 
     // 4. Power Packet (Low Battery)
@@ -40,6 +51,7 @@ pub fn generate_simulated_packets() -> Vec<Vec<u8>> {
     p4.extend_from_slice(&(24.0f64).to_be_bytes());
     p4.extend_from_slice(&(1.0f64).to_be_bytes());
     p4.extend_from_slice(&(15.0f64).to_be_bytes()); // Battery < 20 (Threshold)
+    p4.push(calculate_checksum(&p4));
     packets.push(p4);
 
     packets
