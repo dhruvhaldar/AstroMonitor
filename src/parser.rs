@@ -14,6 +14,8 @@ pub enum ParserError {
     InvalidSubsystem(u8),
     #[error("UTF-8 error")]
     Utf8Error(#[from] std::str::Utf8Error),
+    #[error("Checksum mismatch")]
+    ChecksumMismatch,
     #[error("Unknown error")]
     Unknown,
 }
@@ -46,10 +48,23 @@ impl Parser {
         let payload_len = u16::from_be_bytes(len_bytes) as usize;
         offset += 2;
 
-        if data.len() < offset + payload_len {
+        // Verify total length including checksum (1 byte)
+        let total_packet_len = offset + payload_len + 1;
+        if data.len() < total_packet_len {
             return Err(ParserError::BufferTooShort);
         }
-        // Restrict subsequent reads to the declared packet length
+
+        // Calculate Checksum (XOR sum of Header + Payload + ChecksumByte should be 0)
+        let mut checksum = 0u8;
+        for &byte in &data[..total_packet_len] {
+            checksum ^= byte;
+        }
+
+        if checksum != 0 {
+            return Err(ParserError::ChecksumMismatch);
+        }
+
+        // Restrict subsequent reads to the declared packet length (excluding checksum)
         let data = &data[..offset + payload_len];
 
         let (subsystem, payload) = match subsystem_id {
@@ -168,6 +183,14 @@ impl Parser {
 mod tests {
     use super::*;
 
+    fn calculate_checksum(data: &[u8]) -> u8 {
+        let mut checksum = 0;
+        for &byte in data {
+            checksum ^= byte;
+        }
+        checksum
+    }
+
     #[test]
     fn test_parser_enforces_length() {
         // Create a Power packet with Length = 0, but valid payload data following.
@@ -177,6 +200,10 @@ mod tests {
         packet.extend_from_slice(&(1234567890u64).to_be_bytes()); // Timestamp
         packet.push(0); // Subsystem: Power
         packet.extend_from_slice(&(0u16).to_be_bytes()); // Length = 0 (MALFORMED)
+
+        // Calculate checksum for Header (length 11) + Payload (length 0)
+        // Checksum covers bytes 0..11
+        packet.push(calculate_checksum(&packet));
 
         // Payload (24 bytes) - should be ignored due to Length=0
         packet.extend_from_slice(&(28.0f64).to_be_bytes());
@@ -190,6 +217,10 @@ mod tests {
             result.is_err(),
             "Parser should reject packet with mismatched length"
         );
+        match result {
+            Err(ParserError::BufferTooShort) => {}
+            _ => panic!("Expected BufferTooShort error"),
+        }
     }
 
     #[test]
@@ -204,6 +235,9 @@ mod tests {
         packet.extend_from_slice(&(2.5f64).to_be_bytes());
         packet.extend_from_slice(&(90.0f64).to_be_bytes());
 
+        // Checksum
+        packet.push(calculate_checksum(&packet));
+
         // Garbage
         packet.extend_from_slice(&[0xFF; 100]);
 
@@ -211,5 +245,29 @@ mod tests {
         let result = Parser::parse(&packet);
 
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_checksum_validation() {
+        let mut packet = Vec::new();
+        packet.extend_from_slice(&(1627849200u64).to_be_bytes()); // Timestamp
+        packet.push(0); // Subsystem: Power
+        packet.extend_from_slice(&(24u16).to_be_bytes()); // Length = 24
+
+        packet.extend_from_slice(&(28.0f64).to_be_bytes()); // Voltage
+        packet.extend_from_slice(&(2.5f64).to_be_bytes()); // Current
+        packet.extend_from_slice(&(90.0f64).to_be_bytes()); // Battery
+
+        // Calculate correct checksum
+        let correct_checksum = calculate_checksum(&packet);
+
+        // Append INCORRECT checksum
+        packet.push(correct_checksum.wrapping_add(1));
+
+        let result = Parser::parse(&packet);
+        match result {
+            Err(ParserError::ChecksumMismatch) => {},
+            _ => panic!("Expected ChecksumMismatch, got {:?}", result),
+        }
     }
 }
