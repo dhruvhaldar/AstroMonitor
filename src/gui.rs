@@ -85,6 +85,9 @@ pub struct AstroMonitorApp {
     log_clear_confirm: Option<Instant>,
     alert_clear_confirm: Option<Instant>,
 
+    // Filters
+    filter_logs_important: bool,
+
     // Cached Tooltips (Bolt Optimization)
     // Note: These must be updated if `monitor` thresholds are changed at runtime.
     cached_battery_tooltip: String,
@@ -132,6 +135,8 @@ impl Default for AstroMonitorApp {
             restart_confirm_time: None,
             log_clear_confirm: None,
             alert_clear_confirm: None,
+
+            filter_logs_important: false,
 
             cached_battery_tooltip,
             cached_temp_tooltip,
@@ -406,10 +411,38 @@ impl eframe::App for AstroMonitorApp {
                                 self.last_log_copy_time = Some(Instant::now());
                                 ui.ctx().request_repaint_after(Duration::from_secs(2));
                             }
+
+                            ui.separator();
+
+                            if ui
+                                .selectable_label(self.filter_logs_important, "⚠ Important Only")
+                                .on_hover_text("Show only Alerts and Messages, hiding raw telemetry packets.")
+                                .clicked()
+                            {
+                                self.filter_logs_important = !self.filter_logs_important;
+                            }
                         });
                     });
 
                     // Bolt Optimization: Use virtualization for logs
+                    // Palette Optimization: Filter logs if toggle is active
+                    let filtered_indices: Vec<usize> = if self.filter_logs_important {
+                        self.logs
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, entry)| !matches!(entry, LogEntry::Packet(_)))
+                            .map(|(i, _)| i)
+                            .collect()
+                    } else {
+                        Vec::new()
+                    };
+
+                    let count = if self.filter_logs_important {
+                        filtered_indices.len()
+                    } else {
+                        self.logs.len()
+                    };
+
                     if self.logs.is_empty() {
                         ui.vertical_centered(|ui| {
                             ui.add_space(20.0);
@@ -419,12 +452,21 @@ impl eframe::App for AstroMonitorApp {
                                 egui::RichText::new("Telemetry events will appear here").weak(),
                             );
                         });
+                    } else if count == 0 && self.filter_logs_important {
+                        ui.vertical_centered(|ui| {
+                            ui.add_space(20.0);
+                            ui.label(egui::RichText::new("🔍").size(24.0));
+                            ui.label(egui::RichText::new("No Important Logs").heading());
+                            ui.label(
+                                egui::RichText::new("Only routine telemetry packets found").weak(),
+                            );
+                        });
                     } else {
                         egui::ScrollArea::both()
                             .id_salt("logs_scroll")
                             .max_height(300.0)
                             .stick_to_bottom(true)
-                            .show_rows(ui, row_height, self.logs.len(), |ui, row_range| {
+                            .show_rows(ui, row_height, count, |ui, row_range| {
                                 for i in row_range {
                                     if i % 2 == 1 {
                                         let rect = egui::Rect::from_min_size(
@@ -437,8 +479,15 @@ impl eframe::App for AstroMonitorApp {
                                             ui.visuals().faint_bg_color,
                                         );
                                     }
+
+                                    let actual_index = if self.filter_logs_important {
+                                        filtered_indices[i]
+                                    } else {
+                                        i
+                                    };
+
                                     // Bolt Optimization: Use pre-formatted string directly to avoid allocation
-                                    let text = self.logs[i].as_str();
+                                    let text = self.logs[actual_index].as_str();
                                     // Ensure fixed height by disabling wrap/truncating
                                     ui.add(egui::Label::new(text).truncate())
                                         .on_hover_ui(|ui| {
@@ -1278,8 +1327,8 @@ mod security_tests {
         };
 
         // Format the log packet
-        let log_output =
-            AstroMonitorApp::format_log_packet(packet.timestamp, Some(1), &packet.payload);
+        let mut log_output = String::new();
+        AstroMonitorApp::format_log_packet(&mut log_output, packet.timestamp, Some(1), &packet.payload);
 
         // Assert that the newline is ESCAPED (vulnerability fixed)
         assert!(!log_output.contains('\n'), "Security Check Failed: Log output contains a raw newline! Log Injection Vulnerability Present.");
