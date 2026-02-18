@@ -90,6 +90,8 @@ pub struct AstroMonitorApp {
     restart_confirm_time: Option<Instant>,
     log_clear_confirm: Option<Instant>,
     alert_clear_confirm: Option<Instant>,
+    last_nominal_apply_time: Option<Instant>,
+    last_alert_apply_time: Option<Instant>,
 
     // Filters
     filter_logs_important: bool,
@@ -141,6 +143,8 @@ impl Default for AstroMonitorApp {
             restart_confirm_time: None,
             log_clear_confirm: None,
             alert_clear_confirm: None,
+            last_nominal_apply_time: None,
+            last_alert_apply_time: None,
 
             filter_logs_important: false,
 
@@ -661,19 +665,50 @@ impl eframe::App for AstroMonitorApp {
             // Palette UX Enhancement: Quick Presets
             ui.horizontal(|ui| {
                 ui.label(egui::RichText::new("Presets:").strong());
+
+                let (nom_text, nom_tooltip) = if let Some(_t) = self
+                    .last_nominal_apply_time
+                    .filter(|t| t.elapsed().as_secs() < 1)
+                {
+                    ("✔ Restored!", "Nominal values applied")
+                } else {
+                    ("Nominal 🟢", "Set inputs to safe, nominal values")
+                };
+
                 if ui
-                    .button("Nominal 🟢")
-                    .on_hover_text("Set inputs to safe, nominal values")
+                    .button(nom_text)
+                    .on_hover_ui(|ui| {
+                        ui.label(nom_tooltip);
+                    })
                     .clicked()
                 {
                     self.apply_preset(false);
+                    self.last_nominal_apply_time = Some(Instant::now());
+                    ui.ctx().request_repaint_after(Duration::from_secs(1));
                 }
+
+                let (alert_text, alert_tooltip) = if let Some(_t) = self
+                    .last_alert_apply_time
+                    .filter(|t| t.elapsed().as_secs() < 1)
+                {
+                    ("✔ Triggered!", "Alert values applied")
+                } else {
+                    (
+                        "Trigger Alert ⚠",
+                        "Set inputs to values that will trigger an alert based on current thresholds",
+                    )
+                };
+
                 if ui
-                    .button("Trigger Alert ⚠")
-                    .on_hover_text("Set inputs to values that will trigger an alert based on current thresholds")
+                    .button(alert_text)
+                    .on_hover_ui(|ui| {
+                        ui.label(alert_tooltip);
+                    })
                     .clicked()
                 {
                     self.apply_preset(true);
+                    self.last_alert_apply_time = Some(Instant::now());
+                    ui.ctx().request_repaint_after(Duration::from_secs(1));
                 }
             });
 
