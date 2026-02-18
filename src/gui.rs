@@ -3,6 +3,7 @@ use crate::{
     TelemetryPayload,
 };
 use eframe::egui;
+use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt::Write;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -20,6 +21,7 @@ enum InputSubsystem {
 #[derive(Clone)]
 enum LogEntry {
     Packet(String),
+    SimulatedPacket(usize),
     Message(String),
     Alert(String),
 }
@@ -28,6 +30,7 @@ impl std::fmt::Display for LogEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             LogEntry::Packet(s) => write!(f, "{}", s),
+            LogEntry::SimulatedPacket(idx) => write!(f, "Packet {}", idx + 1),
             LogEntry::Message(s) => write!(f, "{}", s),
             LogEntry::Alert(s) => write!(f, "{}", s),
         }
@@ -35,17 +38,10 @@ impl std::fmt::Display for LogEntry {
 }
 
 impl LogEntry {
-    fn as_str(&self) -> &str {
-        match self {
-            LogEntry::Packet(s) => s,
-            LogEntry::Message(s) => s,
-            LogEntry::Alert(s) => s,
-        }
-    }
-
     fn into_string(self) -> String {
         match self {
             LogEntry::Packet(s) => s,
+            LogEntry::SimulatedPacket(_) => String::new(), // Cannot convert index back to formatted string without context
             LogEntry::Message(s) => s,
             LogEntry::Alert(s) => s,
         }
@@ -415,7 +411,27 @@ impl eframe::App for AstroMonitorApp {
                                     if i > 0 {
                                         all_logs.push('\n');
                                     }
-                                    let _ = write!(all_logs, "{}", log);
+                                    match log {
+                                        LogEntry::SimulatedPacket(idx) => {
+                                            if let Some(packet_data) = self.packets.get(*idx) {
+                                                if let Ok(packet) = Parser::parse(packet_data) {
+                                                    Self::format_log_packet(
+                                                        &mut all_logs,
+                                                        packet.timestamp,
+                                                        Some(idx + 1),
+                                                        &packet.payload,
+                                                    );
+                                                } else {
+                                                    all_logs.push_str("Error parsing packet");
+                                                }
+                                            } else {
+                                                all_logs.push_str("Invalid Packet Index");
+                                            }
+                                        }
+                                        LogEntry::Packet(s) => all_logs.push_str(s),
+                                        LogEntry::Message(s) => all_logs.push_str(s),
+                                        LogEntry::Alert(s) => all_logs.push_str(s),
+                                    }
                                 }
                                 ui.output_mut(|o| o.copied_text = all_logs);
                                 self.last_log_copy_time = Some(Instant::now());
@@ -497,9 +513,10 @@ impl eframe::App for AstroMonitorApp {
                                     };
 
                                     // Bolt Optimization: Use pre-formatted string directly to avoid allocation
-                                    let text = self.logs[actual_index].as_str();
+                                    let text =
+                                        self.resolve_log_entry_text(&self.logs[actual_index]);
                                     // Ensure fixed height by disabling wrap/truncating
-                                    ui.add(egui::Label::new(text).truncate())
+                                    ui.add(egui::Label::new(text.as_ref()).truncate())
                                         .on_hover_ui(|ui| {
                                             ui.label(text);
                                         });
@@ -896,11 +913,44 @@ impl AstroMonitorApp {
         }
     }
 
+    // Bolt Optimization: Helper to resolve log entry text (deferred formatting)
+    fn resolve_log_entry_text<'a>(&self, entry: &'a LogEntry) -> Cow<'a, str> {
+        match entry {
+            LogEntry::SimulatedPacket(idx) => {
+                let packet_idx = *idx;
+                if let Some(packet_data) = self.packets.get(packet_idx) {
+                    if let Ok(packet) = Parser::parse(packet_data) {
+                        let mut s = String::with_capacity(64);
+                        Self::format_log_packet(
+                            &mut s,
+                            packet.timestamp,
+                            Some(packet_idx + 1),
+                            &packet.payload,
+                        );
+                        Cow::Owned(s)
+                    } else {
+                        Cow::Borrowed("Error parsing packet")
+                    }
+                } else {
+                    Cow::Borrowed("Invalid Packet Index")
+                }
+            }
+            LogEntry::Packet(s) => Cow::Borrowed(s),
+            LogEntry::Message(s) => Cow::Borrowed(s),
+            LogEntry::Alert(s) => Cow::Borrowed(s),
+        }
+    }
+
     // Bolt Optimization: Helper to recycle string buffers from full log queue
     fn get_recycled_log_buffer(logs: &mut VecDeque<LogEntry>) -> String {
         if logs.len() >= MAX_LOGS {
             if let Some(entry) = logs.pop_front() {
                 let mut s = entry.into_string();
+                if s.capacity() < 128 {
+                    // Not a recycled buffer (e.g. from SimulatedPacket), or was too small.
+                    // Allocate new buffer to ensure performant writes.
+                    return String::with_capacity(128);
+                }
                 s.clear();
                 return s;
             }
@@ -981,13 +1031,25 @@ impl AstroMonitorApp {
                 // Check for alerts before consuming payload
                 let alert_event = monitor.check(&packet);
 
-                // Bolt Optimization: Format packet string immediately
-                // This replaces the previous "defer" strategy because caching the formatted string
-                // avoids re-formatting every frame in the render loop (huge win),
-                // and avoids converting to OwnedPayload (allocating Strings for StarTracker).
-                let mut packet_text = Self::get_recycled_log_buffer(logs);
-                Self::format_log_packet(&mut packet_text, packet.timestamp, index, &packet.payload);
-                logs.push_back(LogEntry::Packet(packet_text));
+                if let Some(idx) = index {
+                    // Bolt Optimization: Store index only to avoid allocation and formatting overhead
+                    if logs.len() >= MAX_LOGS {
+                        logs.pop_front();
+                    }
+                    // packet_index is 0-based. The `index` passed is `packet_index + 1`.
+                    // We store `idx - 1` to get the 0-based index into self.packets.
+                    logs.push_back(LogEntry::SimulatedPacket(idx - 1));
+                } else {
+                    // Manual Packet: Format immediately
+                    let mut packet_text = Self::get_recycled_log_buffer(logs);
+                    Self::format_log_packet(
+                        &mut packet_text,
+                        packet.timestamp,
+                        index,
+                        &packet.payload,
+                    );
+                    logs.push_back(LogEntry::Packet(packet_text));
+                }
 
                 // Bolt Optimization: Use `check` to get a lightweight MonitorEvent instead of `analyze`
                 // which avoids allocating a String for the alert message before it's needed.
@@ -1170,6 +1232,22 @@ mod tests {
             }),
         };
 
+        // Case 1: Manual Packet (Index None) -> Formatted string
+        AstroMonitorApp::process_result(
+            &mut logs,
+            &mut alerts,
+            &mut alert_counts,
+            &monitor,
+            Ok(packet.clone()),
+            None,
+        );
+
+        assert_eq!(logs.len(), 1);
+        let log_str = logs[0].to_string();
+        assert!(log_str.starts_with("[20:20:00]"));
+        assert!(log_str.contains("Manual Packet: Power(V:28.0"));
+
+        // Case 2: Simulated Packet (Index Some) -> Index storage
         AstroMonitorApp::process_result(
             &mut logs,
             &mut alerts,
@@ -1179,12 +1257,11 @@ mod tests {
             Some(1),
         );
 
-        assert_eq!(logs.len(), 1);
-        let log_str = logs[0].to_string();
-        // We expect "[20:20:00]" to be at the start
-        assert!(log_str.starts_with("[20:20:00]"));
-        // Now using compact formatting, so check for new format
-        assert!(log_str.contains("Packet 1: Power(V:28.0"));
+        assert_eq!(logs.len(), 2);
+        match &logs[1] {
+            LogEntry::SimulatedPacket(idx) => assert_eq!(*idx, 0),
+            _ => panic!("Expected SimulatedPacket for indexed input"),
+        }
 
         // Now test alert formatting (low battery)
         let packet_alert = TelemetryPacket {
@@ -1214,9 +1291,9 @@ mod tests {
         assert_eq!(entry.event.level, AlertLevel::Critical);
 
         // Check that Alert was added to logs
-        // Packet 1 (previous call) + Packet 2 + Alert = 3 logs
-        assert_eq!(logs.len(), 3);
-        let alert_log_str = logs[2].to_string();
+        // Manual(1) + Simulated(1) + Simulated(1) + Alert(1) = 4 logs
+        assert_eq!(logs.len(), 4);
+        let alert_log_str = logs[3].to_string();
         assert!(alert_log_str.contains("*** ALERT: [Critical]"));
     }
 
