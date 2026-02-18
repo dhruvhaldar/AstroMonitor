@@ -994,8 +994,13 @@ impl AstroMonitorApp {
                     d.coordinates.right_ascension, d.coordinates.declination, d.confidence
                 );
                 if let Some(id) = &d.target_id {
-                    // Security Fix: Sanitize ID to prevent Log Injection
-                    let _ = write!(f, " ID:{}", id.escape_debug());
+                    // Security Fix: Sanitize ID to prevent Log Injection AND CSV Injection
+                    let prefix = if id.starts_with(&['=', '+', '-', '@'][..]) {
+                        "'"
+                    } else {
+                        ""
+                    };
+                    let _ = write!(f, " ID:{}{}", prefix, id.escape_debug());
                 }
                 let _ = write!(f, ")");
             }
@@ -1442,6 +1447,36 @@ mod security_tests {
         assert!(
             log_output.contains("[FAKE LOG]"),
             "Log output should still contain the text content"
+        );
+    }
+
+    #[test]
+    fn test_csv_injection_sanitization() {
+        // Construct a packet with a malicious CSV payload in the target ID
+        let malicious_id = "=1+1";
+        let packet = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::StarTracker,
+            payload: TelemetryPayload::StarTracker(StarTrackerReading {
+                target_id: Some(Cow::Borrowed(malicious_id)),
+                coordinates: CelestialCoordinates {
+                    right_ascension: 0.0,
+                    declination: 0.0,
+                },
+                confidence: 1.0,
+            }),
+        };
+
+        // Format the log packet
+        let mut log_output = String::new();
+        AstroMonitorApp::format_log_packet(&mut log_output, packet.timestamp, Some(1), &packet.payload);
+
+        // Assert that the formula is ESCAPED by prepending a quote
+        // The expected behavior is that the output starts with a single quote to prevent execution
+        // e.g. "ID:'=1+1" instead of "ID:=1+1"
+        assert!(
+            log_output.contains("ID:'=1+1"),
+            "CSV Injection Vulnerability: Output '{}' should contain escaped formula (ID:'=1+1)", log_output
         );
     }
 }
