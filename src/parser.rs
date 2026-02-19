@@ -23,7 +23,21 @@ pub enum ParserError {
 pub struct Parser;
 
 impl Parser {
+    /// Parses a raw telemetry packet and validates its checksum.
     pub fn parse<'a>(data: &'a [u8]) -> Result<TelemetryPacket<'a>, ParserError> {
+        Self::parse_internal(data, true)
+    }
+
+    /// Parses a raw telemetry packet WITHOUT validating the checksum.
+    /// Use this ONLY when the data source is trusted (e.g. internal simulation buffers).
+    pub fn parse_trusted<'a>(data: &'a [u8]) -> Result<TelemetryPacket<'a>, ParserError> {
+        Self::parse_internal(data, false)
+    }
+
+    fn parse_internal<'a>(
+        data: &'a [u8],
+        verify_checksum: bool,
+    ) -> Result<TelemetryPacket<'a>, ParserError> {
         let mut offset = 0;
 
         if data.len() < 11 {
@@ -54,14 +68,16 @@ impl Parser {
             return Err(ParserError::BufferTooShort);
         }
 
-        // Calculate Checksum (XOR sum of Header + Payload + ChecksumByte should be 0)
-        let mut checksum = 0u8;
-        for &byte in &data[..total_packet_len] {
-            checksum ^= byte;
-        }
+        if verify_checksum {
+            // Calculate Checksum (XOR sum of Header + Payload + ChecksumByte should be 0)
+            let mut checksum = 0u8;
+            for &byte in &data[..total_packet_len] {
+                checksum ^= byte;
+            }
 
-        if checksum != 0 {
-            return Err(ParserError::ChecksumMismatch);
+            if checksum != 0 {
+                return Err(ParserError::ChecksumMismatch);
+            }
         }
 
         // Restrict subsequent reads to the declared packet length (excluding checksum)
@@ -269,5 +285,33 @@ mod tests {
             Err(ParserError::ChecksumMismatch) => {},
             _ => panic!("Expected ChecksumMismatch, got {:?}", result),
         }
+    }
+
+    #[test]
+    fn benchmark_parser_performance() {
+        // Create a valid Power packet
+        let mut packet = Vec::new();
+        packet.extend_from_slice(&(1627849200u64).to_be_bytes()); // Timestamp
+        packet.push(0); // Subsystem: Power
+        packet.extend_from_slice(&(24u16).to_be_bytes()); // Length = 24
+        packet.extend_from_slice(&(28.0f64).to_be_bytes()); // Voltage
+        packet.extend_from_slice(&(2.5f64).to_be_bytes()); // Current
+        packet.extend_from_slice(&(90.0f64).to_be_bytes()); // Battery
+        packet.push(calculate_checksum(&packet));
+
+        let iterations = 1_000_000;
+        let start = std::time::Instant::now();
+        for _ in 0..iterations {
+            Parser::parse(&packet).unwrap();
+        }
+        let elapsed = start.elapsed();
+        println!("Parser::parse took {:?} for {} iterations", elapsed, iterations);
+
+        let start_trusted = std::time::Instant::now();
+        for _ in 0..iterations {
+            Parser::parse_trusted(&packet).unwrap();
+        }
+        let elapsed_trusted = start_trusted.elapsed();
+        println!("Parser::parse_trusted took {:?} for {} iterations", elapsed_trusted, iterations);
     }
 }
