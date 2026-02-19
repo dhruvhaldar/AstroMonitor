@@ -210,7 +210,7 @@ impl eframe::App for AstroMonitorApp {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     // Bolt Optimization: O(1) status check using cached alert counts
                     let (status_text, status_color) = if self.alert_counts[2] > 0 {
-                        ("SYSTEM CRITICAL 🔴", egui::Color32::RED)
+                        ("System Critical 🔴", egui::Color32::RED)
                     } else if self.alert_counts[1] > 0 {
                         ("System Warning ⚠️", egui::Color32::YELLOW)
                     } else if self.alert_counts[0] > 0 {
@@ -693,7 +693,10 @@ impl eframe::App for AstroMonitorApp {
                 };
 
                 if ui
-                    .button(nom_text)
+                    .add_sized(
+                        [150.0, 0.0],
+                        egui::Button::new(nom_text),
+                    )
                     .on_hover_ui(|ui| {
                         ui.label(nom_tooltip);
                     })
@@ -717,7 +720,10 @@ impl eframe::App for AstroMonitorApp {
                 };
 
                 if ui
-                    .button(alert_text)
+                    .add_sized(
+                        [150.0, 0.0],
+                        egui::Button::new(alert_text),
+                    )
                     .on_hover_ui(|ui| {
                         ui.label(alert_tooltip);
                     })
@@ -848,7 +854,10 @@ impl eframe::App for AstroMonitorApp {
             };
 
             if ui
-                .button(button_text)
+                .add_sized(
+                    [150.0, 0.0],
+                    egui::Button::new(button_text),
+                )
                 .on_hover_ui(|ui| {
                     ui.label(button_tooltip);
                 })
