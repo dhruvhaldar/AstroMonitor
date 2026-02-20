@@ -17,3 +17,8 @@
 **Vulnerability:** The `StarTracker` `target_id` field was displayed directly in logs without escaping special characters that trigger formulas in spreadsheet software (like Excel/LibreOffice). If a user copied logs containing a malicious ID (e.g., `=cmd|...`) and pasted them into a spreadsheet, it could result in arbitrary code execution or data exfiltration.
 **Learning:** "Copy to Clipboard" functionality in data-heavy applications is an often-overlooked attack vector. Sanitizing for display (HTML/Console) is not enough; one must also consider the destination of the data (Spreadsheets/CSV).
 **Prevention:** When formatting user input that might be exported to CSV or pasted into spreadsheets, check if the string starts with `=`, `+`, `-`, or `@` and prepend a single quote `'` to force it to be treated as text.
+
+## 2025-05-24 - Invalid Sensor Data (NaN) Ignored
+**Vulnerability:** The telemetry monitor relied on `<` and `>` comparisons for thresholds (e.g. `battery < 20.0`). Because `NaN < x` is always false, sensors reporting `NaN` (due to failure or attack) bypassed critical alerts, potentially masking system failures.
+**Learning:** Floating-point comparisons are not sufficient for safety-critical monitoring. `NaN` and `Infinity` are valid float values but invalid sensor readings that must be explicitly handled.
+**Prevention:** Use `.is_finite()` to validate all sensor inputs before applying threshold logic. Treat non-finite values as immediate sensor failures.
