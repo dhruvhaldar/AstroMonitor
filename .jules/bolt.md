@@ -9,3 +9,7 @@
 ## 2025-02-18 - [Caching Formatted Strings in Immediate Mode GUIs]
 **Learning:** In immediate mode GUIs like `egui`, constructing complex strings (e.g., using `format!`) inside the render loop for list items causes allocations every frame for every visible item. This creates significant allocator pressure even when the data hasn't changed.
 **Action:** Pre-format and cache display strings in the data model (e.g., `AlertEntry { event, text }`) at the time of creation/update, so the render loop only borrows the string (`&entry.text`).
+
+## 2025-02-18 - [Trusted Data Parsing Optimization]
+**Learning:** Redundantly validating data integrity (checksums) for data that is already inside the system's trust boundary (e.g., internal history buffers) is a waste of cycles, especially in render loops.
+**Action:** Implement `parse_trusted` or similar methods that skip expensive validation steps for internal data, while keeping full validation for external inputs.

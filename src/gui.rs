@@ -177,7 +177,8 @@ impl eframe::App for AstroMonitorApp {
                 && steps < max_steps
             {
                 // Parse packet first to avoid cloning the packet data vector.
-                let result = Parser::parse(&self.packets[self.packet_index]);
+                // Bolt Optimization: Use parse_trusted because self.packets comes from internal simulation.
+                let result = Parser::parse_trusted(&self.packets[self.packet_index]);
                 Self::process_result(
                     &mut self.logs,
                     &mut self.alerts,
@@ -415,7 +416,8 @@ impl eframe::App for AstroMonitorApp {
                                     match log {
                                         LogEntry::SimulatedPacket(idx) => {
                                             if let Some(packet_data) = self.packets.get(*idx) {
-                                                if let Ok(packet) = Parser::parse(packet_data) {
+                                                // Bolt Optimization: Use parse_trusted to skip checksum validation for internal data
+                                                if let Ok(packet) = Parser::parse_trusted(packet_data) {
                                                     Self::format_log_packet(
                                                         &mut all_logs,
                                                         packet.timestamp,
@@ -920,7 +922,8 @@ impl AstroMonitorApp {
             LogEntry::SimulatedPacket(idx) => {
                 let packet_idx = *idx;
                 if let Some(packet_data) = self.packets.get(packet_idx) {
-                    if let Ok(packet) = Parser::parse(packet_data) {
+                    // Bolt Optimization: Use parse_trusted to skip checksum validation for internal data
+                    if let Ok(packet) = Parser::parse_trusted(packet_data) {
                         let mut s = String::with_capacity(64);
                         Self::format_log_packet(
                             &mut s,
