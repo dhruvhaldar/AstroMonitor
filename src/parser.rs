@@ -28,9 +28,14 @@ impl Parser {
         Self::parse_internal(data, true)
     }
 
-    /// Parses a raw telemetry packet WITHOUT validating the checksum.
-    /// Use this ONLY when the data source is trusted (e.g. internal simulation buffers).
-    pub fn parse_trusted<'a>(data: &'a [u8]) -> Result<TelemetryPacket<'a>, ParserError> {
+    /// Parses a raw telemetry packet WITHOUT validating the checksum or UTF-8 encoding.
+    ///
+    /// # Safety
+    ///
+    /// This function skips UTF-8 validation for string fields (e.g., StarTracker target ID).
+    /// The caller must ensure that the input `data` contains valid UTF-8 in these fields.
+    /// Use this ONLY when the data source is trusted (e.g. internal simulation buffers constructed from string literals).
+    pub unsafe fn parse_trusted<'a>(data: &'a [u8]) -> Result<TelemetryPacket<'a>, ParserError> {
         Self::parse_internal(data, false)
     }
 
@@ -167,7 +172,14 @@ impl Parser {
                 let target_id = if id_len > 0 {
                     // Bolt Optimization: Use Cow::Borrowed to avoid allocating a new String.
                     // The string slice refers directly to the input buffer 'data'.
-                    Some(Cow::Borrowed(std::str::from_utf8(id_bytes)?))
+                    let s = if verify_checksum {
+                        std::str::from_utf8(id_bytes)?
+                    } else {
+                        // SAFETY: parse_trusted is only used for internal simulation buffers
+                        // which are constructed from valid UTF-8 string literals.
+                        unsafe { std::str::from_utf8_unchecked(id_bytes) }
+                    };
+                    Some(Cow::Borrowed(s))
                 } else {
                     None
                 };
@@ -299,19 +311,49 @@ mod tests {
         packet.extend_from_slice(&(90.0f64).to_be_bytes()); // Battery
         packet.push(calculate_checksum(&packet));
 
+        // Create a StarTracker packet (involves string parsing)
+        let mut st_packet = Vec::new();
+        let target = "Alpha Centauri A - A very important star for navigation";
+        let payload_len = 8 + 8 + 8 + 1 + target.len() as u16;
+
+        st_packet.extend_from_slice(&(1627849220u64).to_be_bytes());
+        st_packet.push(3); // Subsystem: StarTracker
+        st_packet.extend_from_slice(&payload_len.to_be_bytes()); // Len
+        st_packet.extend_from_slice(&(12.5f64).to_be_bytes()); // RA
+        st_packet.extend_from_slice(&(45.0f64).to_be_bytes()); // Dec
+        st_packet.extend_from_slice(&(0.95f64).to_be_bytes()); // Confidence
+        st_packet.push(target.len() as u8);
+        st_packet.extend_from_slice(target.as_bytes());
+        st_packet.push(calculate_checksum(&st_packet));
+
         let iterations = 1_000_000;
+
         let start = std::time::Instant::now();
         for _ in 0..iterations {
             Parser::parse(&packet).unwrap();
         }
         let elapsed = start.elapsed();
-        println!("Parser::parse took {:?} for {} iterations", elapsed, iterations);
+        println!("Parser::parse (Power) took {:?} for {} iterations", elapsed, iterations);
 
         let start_trusted = std::time::Instant::now();
         for _ in 0..iterations {
-            Parser::parse_trusted(&packet).unwrap();
+            unsafe { Parser::parse_trusted(&packet).unwrap() };
         }
         let elapsed_trusted = start_trusted.elapsed();
-        println!("Parser::parse_trusted took {:?} for {} iterations", elapsed_trusted, iterations);
+        println!("Parser::parse_trusted (Power) took {:?} for {} iterations", elapsed_trusted, iterations);
+
+        let start_st = std::time::Instant::now();
+        for _ in 0..iterations {
+            Parser::parse(&st_packet).unwrap();
+        }
+        let elapsed_st = start_st.elapsed();
+        println!("Parser::parse (StarTracker) took {:?} for {} iterations", elapsed_st, iterations);
+
+        let start_trusted_st = std::time::Instant::now();
+        for _ in 0..iterations {
+            unsafe { Parser::parse_trusted(&st_packet).unwrap() };
+        }
+        let elapsed_trusted_st = start_trusted_st.elapsed();
+        println!("Parser::parse_trusted (StarTracker) took {:?} for {} iterations", elapsed_trusted_st, iterations);
     }
 }
