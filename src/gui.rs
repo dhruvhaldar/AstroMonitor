@@ -210,6 +210,27 @@ impl eframe::App for AstroMonitorApp {
             ui.horizontal(|ui| {
                 ui.heading("Astro Monitor Dashboard");
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    // Palette UX Enhancement: Help & Shortcuts
+                    ui.add(egui::Button::new("?").frame(false))
+                        .on_hover_ui(|ui| {
+                            ui.heading("Help & Shortcuts");
+                            ui.horizontal(|ui| {
+                                ui.label(egui::RichText::new("Space").strong());
+                                ui.label("Toggle Pause/Resume");
+                            });
+                            ui.horizontal(|ui| {
+                                ui.label(egui::RichText::new("Ctrl + Enter").strong());
+                                ui.label("Inject Manual Packet");
+                            });
+                            ui.separator();
+                            ui.label(egui::RichText::new("Tips:").strong());
+                            ui.label("• Hold Shift while dragging sliders for precision.");
+                            ui.label("• Right-click sliders to type exact values.");
+                            ui.label("• Hover over 'System Status' for alert breakdown.");
+                        });
+
+                    ui.separator();
+
                     // Bolt Optimization: O(1) status check using cached alert counts
                     let (status_text, status_color) = if self.alert_counts[2] > 0 {
                         ("SYSTEM CRITICAL 🔴", egui::Color32::RED)
