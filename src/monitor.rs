@@ -14,6 +14,7 @@ pub enum AlertCondition {
     LowBattery { value: f64, threshold: f64 },
     HighTemperature { value: f64, threshold: f64 },
     LowStarConfidence { value: f64, threshold: f64 },
+    SensorFailure { subsystem: &'static str },
 }
 
 impl fmt::Display for AlertCondition {
@@ -33,6 +34,11 @@ impl fmt::Display for AlertCondition {
                 f,
                 "Low Star Confidence: {:.2} (Threshold: {:.2})",
                 value, threshold
+            ),
+            AlertCondition::SensorFailure { subsystem } => write!(
+                f,
+                "Sensor Failure: {} reports invalid data",
+                subsystem
             ),
         }
     }
@@ -91,6 +97,15 @@ impl Monitor {
     pub fn check(&self, packet: &TelemetryPacket<'_>) -> Option<MonitorEvent> {
         match &packet.payload {
             TelemetryPayload::Power(data) => {
+                if !data.voltage.is_finite() || !data.current.is_finite() || !data.battery_level.is_finite() {
+                    return Some(MonitorEvent {
+                        level: AlertLevel::Critical,
+                        condition: AlertCondition::SensorFailure {
+                            subsystem: "Power",
+                        },
+                        timestamp: packet.timestamp,
+                    });
+                }
                 if data.battery_level < self.min_battery_level {
                     return Some(MonitorEvent {
                         level: AlertLevel::Critical,
@@ -103,6 +118,15 @@ impl Monitor {
                 }
             }
             TelemetryPayload::Thermal(data) => {
+                if !data.temp_celsius.is_finite() {
+                     return Some(MonitorEvent {
+                        level: AlertLevel::Critical,
+                        condition: AlertCondition::SensorFailure {
+                            subsystem: "Thermal",
+                        },
+                        timestamp: packet.timestamp,
+                    });
+                }
                 if data.temp_celsius > self.max_temp_celsius {
                     return Some(MonitorEvent {
                         level: AlertLevel::Warning,
@@ -115,6 +139,15 @@ impl Monitor {
                 }
             }
             TelemetryPayload::StarTracker(data) => {
+                if !data.confidence.is_finite() || !data.coordinates.right_ascension.is_finite() || !data.coordinates.declination.is_finite() {
+                     return Some(MonitorEvent {
+                        level: AlertLevel::Critical,
+                        condition: AlertCondition::SensorFailure {
+                            subsystem: "StarTracker",
+                        },
+                        timestamp: packet.timestamp,
+                    });
+                }
                 if data.confidence < self.min_star_confidence {
                     return Some(MonitorEvent {
                         level: AlertLevel::Info,
@@ -133,5 +166,36 @@ impl Monitor {
 
     pub fn analyze(&self, packet: &TelemetryPacket<'_>) -> Option<Alert> {
         self.check(packet).map(Alert::from)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::{PowerData, Subsystem, TelemetryPayload};
+
+    #[test]
+    fn test_monitor_alerts_on_nan() {
+        let monitor = Monitor::default();
+        let packet = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::Power,
+            payload: TelemetryPayload::Power(PowerData {
+                voltage: 28.0,
+                current: 2.5,
+                battery_level: f64::NAN, // Invalid battery
+            }),
+        };
+
+        let event = monitor.check(&packet);
+        assert!(event.is_some(), "Monitor should alert on NaN battery level");
+        let event = event.unwrap();
+        assert_eq!(event.level, AlertLevel::Critical);
+        match event.condition {
+            AlertCondition::SensorFailure { subsystem } => {
+                assert_eq!(subsystem, "Power");
+            }
+            _ => panic!("Expected SensorFailure alert"),
+        }
     }
 }
