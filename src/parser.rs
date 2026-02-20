@@ -266,7 +266,7 @@ mod tests {
 
         let result = Parser::parse(&packet);
         match result {
-            Err(ParserError::ChecksumMismatch) => {},
+            Err(ParserError::ChecksumMismatch) => {}
             _ => panic!("Expected ChecksumMismatch, got {:?}", result),
         }
     }

@@ -3,6 +3,7 @@ use crate::{
     TelemetryPayload,
 };
 use eframe::egui;
+use log::{debug, error, info, warn};
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt::Write;
@@ -1018,6 +1019,13 @@ impl AstroMonitorApp {
         let mut buffer = Self::get_recycled_log_buffer(logs);
         // Bolt Optimization: Write directly to recycled buffer to avoid allocation
         let _ = std::fmt::write(&mut buffer, args);
+
+        if buffer.contains("Error") {
+            error!("{}", buffer);
+        } else {
+            info!("{}", buffer);
+        }
+
         logs.push_back(LogEntry::Message(buffer));
     }
 
@@ -1044,6 +1052,7 @@ impl AstroMonitorApp {
                     // packet_index is 0-based. The `index` passed is `packet_index + 1`.
                     // We store `idx - 1` to get the 0-based index into self.packets.
                     logs.push_back(LogEntry::SimulatedPacket(idx - 1));
+                    debug!("Processed simulated packet {}", idx);
                 } else {
                     // Manual Packet: Format immediately
                     let mut packet_text = Self::get_recycled_log_buffer(logs);
@@ -1053,6 +1062,7 @@ impl AstroMonitorApp {
                         index,
                         &packet.payload,
                     );
+                    info!("{}", packet_text);
                     logs.push_back(LogEntry::Packet(packet_text));
                 }
 
@@ -1063,6 +1073,13 @@ impl AstroMonitorApp {
                     // Bolt Optimization: Format alert string immediately for log
                     let mut alert_text = Self::get_recycled_log_buffer(logs);
                     Self::format_log_alert(&mut alert_text, &event);
+
+                    match event.level {
+                        AlertLevel::Critical => error!("{}", alert_text),
+                        AlertLevel::Warning => warn!("{}", alert_text),
+                        AlertLevel::Info => info!("{}", alert_text),
+                    }
+
                     logs.push_back(LogEntry::Alert(alert_text));
 
                     // Bolt Optimization: Store MonitorEvent directly to avoid string formatting and allocation
@@ -1096,9 +1113,15 @@ impl AstroMonitorApp {
                         AlertLevel::Warning => "⚠️",
                         AlertLevel::Info => "ℹ️",
                     };
-                    let ui_text = format!("{} [{:?}] {} (Time: {:02}:{:02}:{:02})", icon, event.level, event.condition, h, m, s);
+                    let ui_text = format!(
+                        "{} [{:?}] {} (Time: {:02}:{:02}:{:02})",
+                        icon, event.level, event.condition, h, m, s
+                    );
 
-                    alerts.push_back(AlertEntry { event, text: ui_text });
+                    alerts.push_back(AlertEntry {
+                        event,
+                        text: ui_text,
+                    });
                 }
             }
             Err(e) => {
@@ -1165,7 +1188,7 @@ impl AstroMonitorApp {
         let mut packet = Vec::with_capacity(256);
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or(Duration::from_secs(0))
             .as_secs();
         packet.extend_from_slice(&timestamp.to_be_bytes());
 
@@ -1434,7 +1457,12 @@ mod security_tests {
 
         // Format the log packet
         let mut log_output = String::new();
-        AstroMonitorApp::format_log_packet(&mut log_output, packet.timestamp, Some(1), &packet.payload);
+        AstroMonitorApp::format_log_packet(
+            &mut log_output,
+            packet.timestamp,
+            Some(1),
+            &packet.payload,
+        );
 
         // Assert that the newline is ESCAPED (vulnerability fixed)
         assert!(!log_output.contains('\n'), "Security Check Failed: Log output contains a raw newline! Log Injection Vulnerability Present.");
@@ -1469,14 +1497,20 @@ mod security_tests {
 
         // Format the log packet
         let mut log_output = String::new();
-        AstroMonitorApp::format_log_packet(&mut log_output, packet.timestamp, Some(1), &packet.payload);
+        AstroMonitorApp::format_log_packet(
+            &mut log_output,
+            packet.timestamp,
+            Some(1),
+            &packet.payload,
+        );
 
         // Assert that the formula is ESCAPED by prepending a quote
         // The expected behavior is that the output starts with a single quote to prevent execution
         // e.g. "ID:'=1+1" instead of "ID:=1+1"
         assert!(
             log_output.contains("ID:'=1+1"),
-            "CSV Injection Vulnerability: Output '{}' should contain escaped formula (ID:'=1+1)", log_output
+            "CSV Injection Vulnerability: Output '{}' should contain escaped formula (ID:'=1+1)",
+            log_output
         );
     }
 }
