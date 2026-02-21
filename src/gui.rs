@@ -540,7 +540,7 @@ impl eframe::App for AstroMonitorApp {
 
                                     // Bolt Optimization: Use pre-formatted string directly to avoid allocation
                                     let text =
-                                        self.resolve_log_entry_text(&self.logs[actual_index]);
+                                        self.resolve_log_entry_text(&self.logs[actual_index], ui);
                                     // Ensure fixed height by disabling wrap/truncating
                                     ui.add(egui::Label::new(text.as_ref()).truncate())
                                         .on_hover_ui(|ui| {
@@ -956,10 +956,19 @@ impl AstroMonitorApp {
     }
 
     // Bolt Optimization: Helper to resolve log entry text (deferred formatting)
-    fn resolve_log_entry_text<'a>(&self, entry: &'a LogEntry) -> Cow<'a, str> {
+    fn resolve_log_entry_text<'a>(&self, entry: &'a LogEntry, ui: &egui::Ui) -> Cow<'a, str> {
         match entry {
             LogEntry::SimulatedPacket(idx) => {
                 let packet_idx = *idx;
+                let id = egui::Id::new("log_fmt").with(packet_idx);
+
+                // Bolt Optimization: Check temporary cache first to avoid re-parsing and re-formatting every frame.
+                // egui::util::cache::Memory::data behaves like an LRU cache: data not accessed for a frame is dropped.
+                // This is perfect for virtualized lists where only visible items are accessed.
+                if let Some(cached) = ui.ctx().data(|d| d.get_temp::<String>(id)) {
+                    return Cow::Owned(cached);
+                }
+
                 if let Some(packet_data) = self.packets.get(packet_idx) {
                     // Bolt Optimization: Use parse_trusted to skip checksum validation for internal data
                     // SAFETY: internal simulation packets are valid UTF-8
@@ -971,6 +980,8 @@ impl AstroMonitorApp {
                             Some(packet_idx + 1),
                             &packet.payload,
                         );
+                        // Store in cache for next frame
+                        ui.ctx().data_mut(|d| d.insert_temp(id, s.clone()));
                         Cow::Owned(s)
                     } else {
                         Cow::Borrowed("Error parsing packet")
