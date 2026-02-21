@@ -22,3 +22,8 @@
 **Vulnerability:** The telemetry monitor relied on `<` and `>` comparisons for thresholds (e.g. `battery < 20.0`). Because `NaN < x` is always false, sensors reporting `NaN` (due to failure or attack) bypassed critical alerts, potentially masking system failures.
 **Learning:** Floating-point comparisons are not sufficient for safety-critical monitoring. `NaN` and `Infinity` are valid float values but invalid sensor readings that must be explicitly handled.
 **Prevention:** Use `.is_finite()` to validate all sensor inputs before applying threshold logic. Treat non-finite values as immediate sensor failures.
+
+## 2025-05-24 - Unchecked Control Characters in Identifiers
+**Vulnerability:** The `StarTracker` `target_id` field was accepted as any valid UTF-8 string, including control characters like `\n` or `\0`. This could allow log injection at the source or confuse downstream systems, even if display layers escape it.
+**Learning:** Business logic often assumes identifiers are "names" without enforcing character set constraints. "Valid UTF-8" is not the same as "Valid Identifier".
+**Prevention:** Enforce strict character set validation (e.g., printable characters only) at the ingestion/monitoring layer for all identifier fields.
