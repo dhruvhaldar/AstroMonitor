@@ -148,6 +148,18 @@ impl Monitor {
                         timestamp: packet.timestamp,
                     });
                 }
+                // Security Check: Ensure Target ID is a valid printable string (no control characters)
+                if let Some(id) = &data.target_id {
+                    if id.chars().any(|c| c.is_control()) {
+                         return Some(MonitorEvent {
+                            level: AlertLevel::Critical,
+                            condition: AlertCondition::SensorFailure {
+                                subsystem: "StarTracker",
+                            },
+                            timestamp: packet.timestamp,
+                        });
+                    }
+                }
                 if data.confidence < self.min_star_confidence {
                     return Some(MonitorEvent {
                         level: AlertLevel::Info,
@@ -172,7 +184,8 @@ impl Monitor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{PowerData, Subsystem, TelemetryPayload};
+    use crate::models::{PowerData, Subsystem, TelemetryPayload, StarTrackerReading, CelestialCoordinates};
+    use std::borrow::Cow;
 
     #[test]
     fn test_monitor_alerts_on_nan() {
@@ -196,6 +209,34 @@ mod tests {
                 assert_eq!(subsystem, "Power");
             }
             _ => panic!("Expected SensorFailure alert"),
+        }
+    }
+
+    #[test]
+    fn test_monitor_detects_invalid_string_id() {
+        let monitor = Monitor::default();
+        let packet = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::StarTracker,
+            payload: TelemetryPayload::StarTracker(StarTrackerReading {
+                target_id: Some(Cow::Borrowed("Sirius\nB")), // Invalid newline
+                coordinates: CelestialCoordinates {
+                    right_ascension: 10.0,
+                    declination: 20.0,
+                },
+                confidence: 0.9,
+            }),
+        };
+
+        let event = monitor.check(&packet);
+        assert!(event.is_some(), "Monitor should alert on control characters in target_id");
+        let event = event.unwrap();
+        assert_eq!(event.level, AlertLevel::Critical);
+        match event.condition {
+            AlertCondition::SensorFailure { subsystem } => {
+                assert_eq!(subsystem, "StarTracker");
+            }
+            _ => panic!("Expected SensorFailure alert, got {:?}", event.condition),
         }
     }
 }
