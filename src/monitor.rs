@@ -35,11 +35,9 @@ impl fmt::Display for AlertCondition {
                 "Low Star Confidence: {:.2} (Threshold: {:.2})",
                 value, threshold
             ),
-            AlertCondition::SensorFailure { subsystem } => write!(
-                f,
-                "Sensor Failure: {} reports invalid data",
-                subsystem
-            ),
+            AlertCondition::SensorFailure { subsystem } => {
+                write!(f, "Sensor Failure: {} reports invalid data", subsystem)
+            }
         }
     }
 }
@@ -97,12 +95,13 @@ impl Monitor {
     pub fn check(&self, packet: &TelemetryPacket<'_>) -> Option<MonitorEvent> {
         match &packet.payload {
             TelemetryPayload::Power(data) => {
-                if !data.voltage.is_finite() || !data.current.is_finite() || !data.battery_level.is_finite() {
+                if !data.voltage.is_finite()
+                    || !data.current.is_finite()
+                    || !data.battery_level.is_finite()
+                {
                     return Some(MonitorEvent {
                         level: AlertLevel::Critical,
-                        condition: AlertCondition::SensorFailure {
-                            subsystem: "Power",
-                        },
+                        condition: AlertCondition::SensorFailure { subsystem: "Power" },
                         timestamp: packet.timestamp,
                     });
                 }
@@ -119,7 +118,7 @@ impl Monitor {
             }
             TelemetryPayload::Thermal(data) => {
                 if !data.temp_celsius.is_finite() {
-                     return Some(MonitorEvent {
+                    return Some(MonitorEvent {
                         level: AlertLevel::Critical,
                         condition: AlertCondition::SensorFailure {
                             subsystem: "Thermal",
@@ -139,8 +138,11 @@ impl Monitor {
                 }
             }
             TelemetryPayload::StarTracker(data) => {
-                if !data.confidence.is_finite() || !data.coordinates.right_ascension.is_finite() || !data.coordinates.declination.is_finite() {
-                     return Some(MonitorEvent {
+                if !data.confidence.is_finite()
+                    || !data.coordinates.right_ascension.is_finite()
+                    || !data.coordinates.declination.is_finite()
+                {
+                    return Some(MonitorEvent {
                         level: AlertLevel::Critical,
                         condition: AlertCondition::SensorFailure {
                             subsystem: "StarTracker",

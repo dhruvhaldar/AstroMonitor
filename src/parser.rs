@@ -333,27 +333,39 @@ mod tests {
             Parser::parse(&packet).unwrap();
         }
         let elapsed = start.elapsed();
-        println!("Parser::parse (Power) took {:?} for {} iterations", elapsed, iterations);
+        println!(
+            "Parser::parse (Power) took {:?} for {} iterations",
+            elapsed, iterations
+        );
 
         let start_trusted = std::time::Instant::now();
         for _ in 0..iterations {
             unsafe { Parser::parse_trusted(&packet).unwrap() };
         }
         let elapsed_trusted = start_trusted.elapsed();
-        println!("Parser::parse_trusted (Power) took {:?} for {} iterations", elapsed_trusted, iterations);
+        println!(
+            "Parser::parse_trusted (Power) took {:?} for {} iterations",
+            elapsed_trusted, iterations
+        );
 
         let start_st = std::time::Instant::now();
         for _ in 0..iterations {
             Parser::parse(&st_packet).unwrap();
         }
         let elapsed_st = start_st.elapsed();
-        println!("Parser::parse (StarTracker) took {:?} for {} iterations", elapsed_st, iterations);
+        println!(
+            "Parser::parse (StarTracker) took {:?} for {} iterations",
+            elapsed_st, iterations
+        );
 
         let start_trusted_st = std::time::Instant::now();
         for _ in 0..iterations {
             unsafe { Parser::parse_trusted(&st_packet).unwrap() };
         }
         let elapsed_trusted_st = start_trusted_st.elapsed();
-        println!("Parser::parse_trusted (StarTracker) took {:?} for {} iterations", elapsed_trusted_st, iterations);
+        println!(
+            "Parser::parse_trusted (StarTracker) took {:?} for {} iterations",
+            elapsed_trusted_st, iterations
+        );
     }
 }
