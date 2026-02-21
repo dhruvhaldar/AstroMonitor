@@ -857,6 +857,22 @@ impl eframe::App for AstroMonitorApp {
                                 .char_limit(255),
                         )
                         .on_hover_text("Target ID (max 255 characters)");
+
+                        // Palette UX Enhancement: Inline Security Warning
+                        if self.input_target.starts_with(&['=', '+', '-', '@'][..]) {
+                            ui.colored_label(egui::Color32::YELLOW, "⚠")
+                                .on_hover_ui(|ui| {
+                                    ui.label(
+                                        egui::RichText::new("Sanitization Active")
+                                            .strong()
+                                            .color(egui::Color32::YELLOW),
+                                    );
+                                    ui.label("Input starts with a restricted character (=, +, -, @).");
+                                    ui.label(
+                                        "It will be escaped with a quote (') in logs to prevent CSV injection.",
+                                    );
+                                });
+                        }
                     });
                 }
             }
