@@ -93,6 +93,11 @@ pub struct AstroMonitorApp {
     // Filters
     filter_logs_important: bool,
 
+    // Bolt Optimization: Persistent buffer for filtered logs indices to avoid allocation loop
+    filtered_log_indices: Vec<usize>,
+    logs_mutation_counter: u64,
+    cached_filter_counter: u64,
+
     // Cached Tooltips (Bolt Optimization)
     // Note: These must be updated if `monitor` thresholds are changed at runtime.
     cached_battery_tooltip: String,
@@ -144,6 +149,9 @@ impl Default for AstroMonitorApp {
             last_alert_apply_time: None,
 
             filter_logs_important: false,
+            filtered_log_indices: Vec::with_capacity(MAX_LOGS),
+            logs_mutation_counter: 0,
+            cached_filter_counter: 0,
 
             cached_battery_tooltip,
             cached_temp_tooltip,
@@ -189,6 +197,9 @@ impl eframe::App for AstroMonitorApp {
                     Some(self.packet_index + 1),
                 );
                 self.packet_index += 1;
+                // Bolt Optimization: Increment logs mutation counter
+                self.logs_mutation_counter = self.logs_mutation_counter.wrapping_add(1);
+
                 // Bolt Optimization: Moved update_progress_text outside the loop to update once per frame instead of per packet
                 self.last_update += delay; // Catch up without drift
                 steps += 1;
@@ -404,6 +415,8 @@ impl eframe::App for AstroMonitorApp {
                             {
                                 if confirm_mode {
                                     self.logs.clear();
+                                    self.logs_mutation_counter =
+                                        self.logs_mutation_counter.wrapping_add(1);
                                     self.log_clear_confirm = None;
                                     self.last_log_clear_time = Some(Instant::now());
                                     ui.ctx().request_repaint_after(Duration::from_secs(2));
@@ -478,19 +491,24 @@ impl eframe::App for AstroMonitorApp {
 
                     // Bolt Optimization: Use virtualization for logs
                     // Palette Optimization: Filter logs if toggle is active
-                    let filtered_indices: Vec<usize> = if self.filter_logs_important {
-                        self.logs
-                            .iter()
-                            .enumerate()
-                            .filter(|(_, entry)| !matches!(entry, LogEntry::Packet(_)))
-                            .map(|(i, _)| i)
-                            .collect()
-                    } else {
-                        Vec::new()
-                    };
+                    // Bolt Optimization: Re-use buffer for filtered indices to avoid allocation loop
+                    if self.filter_logs_important {
+                        // Only recompute if logs changed since last cache update
+                        if self.logs_mutation_counter != self.cached_filter_counter {
+                            self.filtered_log_indices.clear();
+                            self.filtered_log_indices.extend(
+                                self.logs
+                                    .iter()
+                                    .enumerate()
+                                    .filter(|(_, entry)| !matches!(entry, LogEntry::Packet(_)))
+                                    .map(|(i, _)| i),
+                            );
+                            self.cached_filter_counter = self.logs_mutation_counter;
+                        }
+                    }
 
                     let count = if self.filter_logs_important {
-                        filtered_indices.len()
+                        self.filtered_log_indices.len()
                     } else {
                         self.logs.len()
                     };
@@ -533,7 +551,7 @@ impl eframe::App for AstroMonitorApp {
                                     }
 
                                     let actual_index = if self.filter_logs_important {
-                                        filtered_indices[i]
+                                        self.filtered_log_indices[i]
                                     } else {
                                         i
                                     };
@@ -907,6 +925,7 @@ impl eframe::App for AstroMonitorApp {
                     result,
                     None,
                 );
+                self.logs_mutation_counter = self.logs_mutation_counter.wrapping_add(1);
                 self.last_injection_time = Some(Instant::now());
                 ui.ctx().request_repaint_after(Duration::from_secs(2));
             }
