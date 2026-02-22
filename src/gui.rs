@@ -1,6 +1,6 @@
 use crate::{
-    simulation, AlertLevel, Monitor, MonitorEvent, Parser, ParserError, TelemetryPacket,
-    TelemetryPayload,
+    simulation, AlertCondition, AlertLevel, Monitor, MonitorEvent, Parser, ParserError,
+    TelemetryPacket, TelemetryPayload,
 };
 use eframe::egui;
 use log::{debug, error, info, warn};
@@ -688,7 +688,7 @@ impl eframe::App for AstroMonitorApp {
                                     // Bolt Optimization: Use RichText with cached string
                                     ui.add(egui::Label::new(egui::RichText::new(&entry.text).color(color)).truncate())
                                         .on_hover_ui(|ui| {
-                                            ui.label(&entry.text);
+                                            Self::render_alert_tooltip(ui, &entry.event);
                                         });
                                 }
                             });
@@ -1086,6 +1086,66 @@ impl AstroMonitorApp {
 
     fn format_log_alert(f: &mut String, event: &MonitorEvent) {
         let _ = write!(f, "*** ALERT: [{:?}] {} ***", event.level, event.condition);
+    }
+
+    fn render_alert_tooltip(ui: &mut egui::Ui, event: &MonitorEvent) {
+        let (color, title, icon) = match event.level {
+            AlertLevel::Critical => (egui::Color32::RED, "Critical Alert", "🔴"),
+            AlertLevel::Warning => (egui::Color32::YELLOW, "System Warning", "⚠️"),
+            AlertLevel::Info => (egui::Color32::LIGHT_BLUE, "System Info", "ℹ"),
+        };
+
+        ui.heading(egui::RichText::new(format!("{} {}", icon, title)).color(color));
+        ui.separator();
+
+        match &event.condition {
+            AlertCondition::LowBattery { value, threshold } => {
+                ui.label(format!("Battery Level: {:.1}%", value));
+                ui.label(format!("Threshold: < {:.1}%", threshold));
+                ui.label(
+                    egui::RichText::new("Action: Initiate power saving mode.")
+                        .weak()
+                        .italics(),
+                );
+            }
+            AlertCondition::HighTemperature { value, threshold } => {
+                ui.label(format!("Temperature: {:.1}°C", value));
+                ui.label(format!("Threshold: > {:.1}°C", threshold));
+                ui.label(
+                    egui::RichText::new("Action: Check active cooling system.")
+                        .weak()
+                        .italics(),
+                );
+            }
+            AlertCondition::LowStarConfidence { value, threshold } => {
+                ui.label(format!("Confidence: {:.2}", value));
+                ui.label(format!("Threshold: < {:.2}", threshold));
+                ui.label(
+                    egui::RichText::new("Action: Recalibrate star tracker.")
+                        .weak()
+                        .italics(),
+                );
+            }
+            AlertCondition::SensorFailure { subsystem } => {
+                ui.label(format!("Subsystem: {}", subsystem));
+                ui.label("Status: Invalid Data / Sensor Failure");
+                ui.label(
+                    egui::RichText::new("Action: Run diagnostics immediately.")
+                        .weak()
+                        .italics(),
+                );
+            }
+        }
+
+        ui.separator();
+        ui.horizontal(|ui| {
+            ui.label(egui::RichText::new("Timestamp:").strong());
+            let ts = event.timestamp;
+            let s = ts % 60;
+            let m = (ts / 60) % 60;
+            let h = (ts / 3600) % 24;
+            ui.monospace(format!("{:02}:{:02}:{:02} UTC", h, m, s));
+        });
     }
 
     fn add_log_message(logs: &mut VecDeque<LogEntry>, args: std::fmt::Arguments<'_>) {

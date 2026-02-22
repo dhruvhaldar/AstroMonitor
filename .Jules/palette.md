@@ -9,3 +9,7 @@
 ## 2024-05-27 - Inline Security Warnings
 **Learning:** Displaying a conditional warning icon next to input fields when they contain restricted characters (that will be sanitized) provides immediate feedback and prevents user confusion about log discrepancies.
 **Action:** Use conditional `ui.colored_label` with `.on_hover_ui` tooltips for inline validation/sanitization feedback.
+
+## 2024-05-28 - Rich Alert Tooltips
+**Learning:** By accessing the underlying `MonitorEvent` struct within `.on_hover_ui()` instead of displaying the pre-formatted string, we can provide actionable recommendations and structured data (Threshold vs Value) without cluttering the main list view.
+**Action:** Always prefer structured event data for tooltips to enable rich, context-aware details.
