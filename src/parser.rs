@@ -28,14 +28,12 @@ impl Parser {
         Self::parse_internal(data, true)
     }
 
-    /// Parses a raw telemetry packet WITHOUT validating the checksum or UTF-8 encoding.
+    /// Parses a raw telemetry packet WITHOUT validating the checksum.
     ///
-    /// # Safety
-    ///
-    /// This function skips UTF-8 validation for string fields (e.g., StarTracker target ID).
-    /// The caller must ensure that the input `data` contains valid UTF-8 in these fields.
-    /// Use this ONLY when the data source is trusted (e.g. internal simulation buffers constructed from string literals).
-    pub unsafe fn parse_trusted<'a>(data: &'a [u8]) -> Result<TelemetryPacket<'a>, ParserError> {
+    /// Unlike `parse`, this function skips the O(N) checksum validation for performance
+    /// when the data source is trusted (e.g. internal simulation buffers).
+    /// However, it still validates UTF-8 strings to ensure memory safety.
+    pub fn parse_trusted<'a>(data: &'a [u8]) -> Result<TelemetryPacket<'a>, ParserError> {
         Self::parse_internal(data, false)
     }
 
@@ -172,13 +170,7 @@ impl Parser {
                 let target_id = if id_len > 0 {
                     // Bolt Optimization: Use Cow::Borrowed to avoid allocating a new String.
                     // The string slice refers directly to the input buffer 'data'.
-                    let s = if verify_checksum {
-                        std::str::from_utf8(id_bytes)?
-                    } else {
-                        // SAFETY: parse_trusted is only used for internal simulation buffers
-                        // which are constructed from valid UTF-8 string literals.
-                        unsafe { std::str::from_utf8_unchecked(id_bytes) }
-                    };
+                    let s = std::str::from_utf8(id_bytes)?;
                     Some(Cow::Borrowed(s))
                 } else {
                     None
@@ -340,7 +332,7 @@ mod tests {
 
         let start_trusted = std::time::Instant::now();
         for _ in 0..iterations {
-            unsafe { Parser::parse_trusted(&packet).unwrap() };
+            Parser::parse_trusted(&packet).unwrap();
         }
         let elapsed_trusted = start_trusted.elapsed();
         println!(
@@ -360,7 +352,7 @@ mod tests {
 
         let start_trusted_st = std::time::Instant::now();
         for _ in 0..iterations {
-            unsafe { Parser::parse_trusted(&st_packet).unwrap() };
+            Parser::parse_trusted(&st_packet).unwrap();
         }
         let elapsed_trusted_st = start_trusted_st.elapsed();
         println!(
