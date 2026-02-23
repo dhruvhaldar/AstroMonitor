@@ -105,6 +105,14 @@ impl Monitor {
                         timestamp: packet.timestamp,
                     });
                 }
+                // Security Check: Validate Battery Level Range (0.0 - 100.0)
+                if !(0.0..=100.0).contains(&data.battery_level) {
+                    return Some(MonitorEvent {
+                        level: AlertLevel::Critical,
+                        condition: AlertCondition::SensorFailure { subsystem: "Power" },
+                        timestamp: packet.timestamp,
+                    });
+                }
                 if data.battery_level < self.min_battery_level {
                     return Some(MonitorEvent {
                         level: AlertLevel::Critical,
@@ -142,6 +150,16 @@ impl Monitor {
                     || !data.coordinates.right_ascension.is_finite()
                     || !data.coordinates.declination.is_finite()
                 {
+                    return Some(MonitorEvent {
+                        level: AlertLevel::Critical,
+                        condition: AlertCondition::SensorFailure {
+                            subsystem: "StarTracker",
+                        },
+                        timestamp: packet.timestamp,
+                    });
+                }
+                // Security Check: Validate Confidence Range (0.0 - 1.0)
+                if !(0.0..=1.0).contains(&data.confidence) {
                     return Some(MonitorEvent {
                         level: AlertLevel::Critical,
                         condition: AlertCondition::SensorFailure {
@@ -239,6 +257,65 @@ mod tests {
                 assert_eq!(subsystem, "StarTracker");
             }
             _ => panic!("Expected SensorFailure alert, got {:?}", event.condition),
+        }
+    }
+
+    #[test]
+    fn test_monitor_negative_confidence_security_gap() {
+        let monitor = Monitor::default();
+        let packet = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::StarTracker,
+            payload: TelemetryPayload::StarTracker(StarTrackerReading {
+                target_id: Some(Cow::Borrowed("Sirius")),
+                coordinates: CelestialCoordinates {
+                    right_ascension: 10.0,
+                    declination: 20.0,
+                },
+                confidence: -1.0, // Invalid negative confidence
+            }),
+        };
+
+        let event = monitor.check(&packet);
+        assert!(event.is_some());
+        let event = event.unwrap();
+
+        // FIX VERIFIED:
+        // Negative confidence should now trigger "Sensor Failure" (Critical).
+        assert_eq!(event.level, AlertLevel::Critical);
+        match event.condition {
+            AlertCondition::SensorFailure { subsystem } => {
+                assert_eq!(subsystem, "StarTracker");
+            }
+            _ => panic!("Expected SensorFailure alert"),
+        }
+    }
+
+    #[test]
+    fn test_monitor_invalid_battery_security_gap() {
+        let monitor = Monitor::default();
+        let packet = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::Power,
+            payload: TelemetryPayload::Power(PowerData {
+                voltage: 28.0,
+                current: 2.5,
+                battery_level: 200.0, // Invalid > 100%
+            }),
+        };
+
+        let event = monitor.check(&packet);
+        assert!(event.is_some());
+        let event = event.unwrap();
+
+        // FIX VERIFIED:
+        // Battery > 100% should trigger "Sensor Failure" (Critical).
+        assert_eq!(event.level, AlertLevel::Critical);
+        match event.condition {
+            AlertCondition::SensorFailure { subsystem } => {
+                assert_eq!(subsystem, "Power");
+            }
+            _ => panic!("Expected SensorFailure alert"),
         }
     }
 }

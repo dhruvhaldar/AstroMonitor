@@ -27,3 +27,8 @@
 **Vulnerability:** The `StarTracker` `target_id` field was accepted as any valid UTF-8 string, including control characters like `\n` or `\0`. This could allow log injection at the source or confuse downstream systems, even if display layers escape it.
 **Learning:** Business logic often assumes identifiers are "names" without enforcing character set constraints. "Valid UTF-8" is not the same as "Valid Identifier".
 **Prevention:** Enforce strict character set validation (e.g., printable characters only) at the ingestion/monitoring layer for all identifier fields.
+
+## 2024-03-24 - Sensor Failure Misclassification
+**Vulnerability:** Invalid sensor readings (e.g., negative confidence, >100% battery) were treated as "Low/High" values triggering lower-severity alerts (Info/Warning) instead of Critical Sensor Failures.
+**Learning:** Threshold-based logic (`value < threshold`) implicitly assumes valid input ranges. Negative values satisfy `<` checks but represent fundamental invalidity.
+**Prevention:** Enforce strict domain validation (e.g. 0.0-1.0 range) *before* applying business logic thresholds. Treat out-of-domain values as system failures, not process deviations.
