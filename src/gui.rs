@@ -876,6 +876,23 @@ impl eframe::App for AstroMonitorApp {
                         )
                         .on_hover_text("Target ID (max 255 characters)");
 
+                        // Palette UX Enhancement: Byte Counter
+                        let len = self.input_target.len();
+                        let limit = 255;
+                        let color = if len > limit {
+                            egui::Color32::RED
+                        } else if len > 230 {
+                            egui::Color32::YELLOW
+                        } else {
+                            ui.visuals().weak_text_color()
+                        };
+
+                        ui.label(egui::RichText::new(format!("{}/{}", len, limit)).color(color))
+                            .on_hover_ui(|ui| {
+                                ui.label("Protocol limit: 255 bytes.");
+                                ui.label("Input exceeding this will be truncated.");
+                            });
+
                         // Palette UX Enhancement: Inline Security Warning
                         if self.input_target.starts_with(&['=', '+', '-', '@'][..]) {
                             ui.colored_label(egui::Color32::YELLOW, "⚠")

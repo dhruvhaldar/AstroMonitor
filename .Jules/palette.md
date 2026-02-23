@@ -13,3 +13,7 @@
 ## 2024-05-28 - Rich Alert Tooltips
 **Learning:** By accessing the underlying `MonitorEvent` struct within `.on_hover_ui()` instead of displaying the pre-formatted string, we can provide actionable recommendations and structured data (Threshold vs Value) without cluttering the main list view.
 **Action:** Always prefer structured event data for tooltips to enable rich, context-aware details.
+
+## 2024-05-29 - Input Byte Limits vs Char Limits
+**Learning:** In `egui`, `TextEdit::char_limit` restricts Unicode scalars (characters), but network protocols often enforce byte limits. Multi-byte characters (e.g., emojis) can cause inputs to exceed byte limits even if they pass the character limit.
+**Action:** For fields with strict protocol byte limits, always display a `.len()` (byte) counter alongside the input field with conditional coloring to warn users of potential truncation.
