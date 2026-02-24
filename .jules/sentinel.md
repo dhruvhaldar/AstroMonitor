@@ -32,3 +32,8 @@
 **Vulnerability:** Invalid sensor readings (e.g., negative confidence, >100% battery) were treated as "Low/High" values triggering lower-severity alerts (Info/Warning) instead of Critical Sensor Failures.
 **Learning:** Threshold-based logic (`value < threshold`) implicitly assumes valid input ranges. Negative values satisfy `<` checks but represent fundamental invalidity.
 **Prevention:** Enforce strict domain validation (e.g. 0.0-1.0 range) *before* applying business logic thresholds. Treat out-of-domain values as system failures, not process deviations.
+
+## 2025-05-27 - Unchecked Telemetry Coordinates (RA/Dec)
+**Vulnerability:** The `Monitor` logic checked that coordinate values were `finite` but did not validate their physical ranges (RA: 0-360, Dec: -90-+90). This allowed nonsensical values (e.g., RA=400.0) to be processed without raising a `SensorFailure`.
+**Learning:** Physical systems often have implicit constraints that are not enforced by data types (e.g., `f64` covers all real numbers). "Valid float" != "Valid coordinate".
+**Prevention:** Implement strict domain validation for all physical quantities at the ingestion layer, ensuring values fall within their defined physical limits before any business logic is applied.
