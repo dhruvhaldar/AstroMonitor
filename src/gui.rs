@@ -828,6 +828,24 @@ impl eframe::App for AstroMonitorApp {
                         .on_hover_ui(|ui| {
                             ui.label("Battery Level (0-100%)");
                         });
+
+                        // Palette UX Enhancement: Visual Battery Bar
+                        let battery_pct = self.input_battery as f32 / 100.0;
+                        let battery_color = if self.input_battery < self.monitor.min_battery_level {
+                            egui::Color32::RED
+                        } else if self.input_battery < 50.0 {
+                            egui::Color32::YELLOW
+                        } else {
+                            egui::Color32::GREEN
+                        };
+                        ui.add(
+                            egui::ProgressBar::new(battery_pct)
+                                .fill(battery_color)
+                                .desired_width(100.0)
+                                .show_percentage(),
+                        )
+                        .on_hover_text("Visual indicator of battery health");
+
                         if self.input_battery < self.monitor.min_battery_level {
                             // Bolt Optimization: Use colored_label to avoid RichText allocation
                             ui.colored_label(egui::Color32::RED, "⚠").on_hover_ui(|ui| {
@@ -885,6 +903,21 @@ impl eframe::App for AstroMonitorApp {
                         .on_hover_ui(|ui| {
                             ui.label("Star Match Confidence (0.0-1.0)");
                         });
+
+                        // Palette UX Enhancement: Visual Confidence Bar
+                        let conf_color =
+                            if self.input_confidence < self.monitor.min_star_confidence {
+                                egui::Color32::RED
+                            } else {
+                                egui::Color32::GREEN
+                            };
+                        ui.add(
+                            egui::ProgressBar::new(self.input_confidence as f32)
+                                .fill(conf_color)
+                                .desired_width(100.0),
+                        )
+                        .on_hover_text("Visual indicator of star match confidence");
+
                         if self.input_confidence < self.monitor.min_star_confidence {
                             // Bolt Optimization: Use colored_label to avoid RichText allocation
                             ui.colored_label(egui::Color32::LIGHT_BLUE, "ℹ")
