@@ -170,7 +170,28 @@ impl Monitor {
                 }
                 // Security Check: Ensure Target ID is a valid printable string (no control characters)
                 if let Some(id) = &data.target_id {
-                    if id.chars().any(|c| c.is_control()) {
+                    let mut has_control = false;
+                    for (i, &b) in id.as_bytes().iter().enumerate() {
+                        if b < 32 || b == 127 {
+                            has_control = true;
+                            break;
+                        }
+                        if b >= 128 {
+                            // Bolt Optimization: Fall back to full UTF-8 char check for non-ASCII
+                            // to ensure correct handling of Unicode control characters.
+                            // Start scan from current byte index to avoid rescanning ASCII prefix.
+                            // SAFETY: i is a valid byte index from the iterator, and since we iterate
+                            // bytes, slicing at i is safe if we are at an ASCII byte boundary,
+                            // but wait, if b >= 128, b is the *start* of a multibyte sequence.
+                            // So i is a valid char boundary.
+                            if id[i..].chars().any(|c| c.is_control()) {
+                                has_control = true;
+                            }
+                            break;
+                        }
+                    }
+
+                    if has_control {
                          return Some(MonitorEvent {
                             level: AlertLevel::Critical,
                             condition: AlertCondition::SensorFailure {
