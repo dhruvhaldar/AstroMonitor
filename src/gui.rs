@@ -4,9 +4,9 @@ use crate::{
 };
 use eframe::egui;
 use log::{debug, error, info, warn};
-use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt::Write;
+use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const MAX_LOGS: usize = 1000;
@@ -17,6 +17,30 @@ enum InputSubsystem {
     Power,
     Thermal,
     StarTracker,
+}
+
+#[derive(Clone)]
+enum ResolvedLogText<'a> {
+    Borrowed(&'a str),
+    Shared(Arc<String>),
+}
+
+impl<'a> AsRef<str> for ResolvedLogText<'a> {
+    fn as_ref(&self) -> &str {
+        match self {
+            Self::Borrowed(s) => s,
+            Self::Shared(arc) => arc.as_str(),
+        }
+    }
+}
+
+impl<'a> From<ResolvedLogText<'a>> for egui::WidgetText {
+    fn from(val: ResolvedLogText<'a>) -> Self {
+        match val {
+            ResolvedLogText::Borrowed(s) => s.into(),
+            ResolvedLogText::Shared(arc) => arc.as_str().into(),
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -975,7 +999,7 @@ impl AstroMonitorApp {
     }
 
     // Bolt Optimization: Helper to resolve log entry text (deferred formatting)
-    fn resolve_log_entry_text<'a>(&self, entry: &'a LogEntry, ui: &egui::Ui) -> Cow<'a, str> {
+    fn resolve_log_entry_text<'a>(&self, entry: &'a LogEntry, ui: &egui::Ui) -> ResolvedLogText<'a> {
         match entry {
             LogEntry::SimulatedPacket(idx) => {
                 let packet_idx = *idx;
@@ -984,8 +1008,8 @@ impl AstroMonitorApp {
                 // Bolt Optimization: Check temporary cache first to avoid re-parsing and re-formatting every frame.
                 // egui::util::cache::Memory::data behaves like an LRU cache: data not accessed for a frame is dropped.
                 // This is perfect for virtualized lists where only visible items are accessed.
-                if let Some(cached) = ui.ctx().data(|d| d.get_temp::<String>(id)) {
-                    return Cow::Owned(cached);
+                if let Some(cached) = ui.ctx().data(|d| d.get_temp::<Arc<String>>(id)) {
+                    return ResolvedLogText::Shared(cached);
                 }
 
                 if let Some(packet_data) = self.packets.get(packet_idx) {
@@ -999,19 +1023,20 @@ impl AstroMonitorApp {
                             Some(packet_idx + 1),
                             &packet.payload,
                         );
+                        let arc = Arc::new(s);
                         // Store in cache for next frame
-                        ui.ctx().data_mut(|d| d.insert_temp(id, s.clone()));
-                        Cow::Owned(s)
+                        ui.ctx().data_mut(|d| d.insert_temp(id, arc.clone()));
+                        ResolvedLogText::Shared(arc)
                     } else {
-                        Cow::Borrowed("Error parsing packet")
+                        ResolvedLogText::Borrowed("Error parsing packet")
                     }
                 } else {
-                    Cow::Borrowed("Invalid Packet Index")
+                    ResolvedLogText::Borrowed("Invalid Packet Index")
                 }
             }
-            LogEntry::Packet(s) => Cow::Borrowed(s),
-            LogEntry::Message(s) => Cow::Borrowed(s),
-            LogEntry::Alert(s) => Cow::Borrowed(s),
+            LogEntry::Packet(s) => ResolvedLogText::Borrowed(s),
+            LogEntry::Message(s) => ResolvedLogText::Borrowed(s),
+            LogEntry::Alert(s) => ResolvedLogText::Borrowed(s),
         }
     }
 
