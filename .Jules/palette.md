@@ -17,3 +17,7 @@
 ## 2024-05-29 - Input Byte Limits vs Char Limits
 **Learning:** In `egui`, `TextEdit::char_limit` restricts Unicode scalars (characters), but network protocols often enforce byte limits. Multi-byte characters (e.g., emojis) can cause inputs to exceed byte limits even if they pass the character limit.
 **Action:** For fields with strict protocol byte limits, always display a `.len()` (byte) counter alongside the input field with conditional coloring to warn users of potential truncation.
+
+## 2024-10-24 - Visual Gauges using Progress Bars
+**Learning:** egui's `ProgressBar` can be effectively used as a compact visual gauge for scalar inputs by overriding the fill color based on thresholds. This provides immediate "pre-flight" validation feedback without requiring text alerts.
+**Action:** Use color-coded progress bars next to numeric inputs where safety thresholds exist.
