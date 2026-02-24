@@ -159,6 +159,19 @@ impl Monitor {
                     });
                 }
                 // Security Check: Validate Confidence Range (0.0 - 1.0)
+                // Security Check: Validate Celestial Coordinates
+                if !(0.0..=360.0).contains(&data.coordinates.right_ascension)
+                    || !(-90.0..=90.0).contains(&data.coordinates.declination)
+                {
+                    return Some(MonitorEvent {
+                        level: AlertLevel::Critical,
+                        condition: AlertCondition::SensorFailure {
+                            subsystem: "StarTracker",
+                        },
+                        timestamp: packet.timestamp,
+                    });
+                }
+
                 if !(0.0..=1.0).contains(&data.confidence) {
                     return Some(MonitorEvent {
                         level: AlertLevel::Critical,
@@ -337,6 +350,60 @@ mod tests {
                 assert_eq!(subsystem, "Power");
             }
             _ => panic!("Expected SensorFailure alert"),
+        }
+    }
+
+    #[test]
+    fn test_monitor_invalid_coordinates() {
+        let monitor = Monitor::default();
+        // Case 1: Invalid Right Ascension (> 360.0)
+        let packet_ra = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::StarTracker,
+            payload: TelemetryPayload::StarTracker(StarTrackerReading {
+                target_id: Some(Cow::Borrowed("TestStar")),
+                coordinates: CelestialCoordinates {
+                    right_ascension: 400.0, // Invalid
+                    declination: 0.0,
+                },
+                confidence: 1.0,
+            }),
+        };
+
+        let event_ra = monitor.check(&packet_ra);
+        assert!(event_ra.is_some(), "Monitor should alert on RA > 360.0");
+        let event_ra = event_ra.unwrap();
+        assert_eq!(event_ra.level, AlertLevel::Critical);
+        match event_ra.condition {
+            AlertCondition::SensorFailure { subsystem } => {
+                assert_eq!(subsystem, "StarTracker");
+            }
+            _ => panic!("Expected SensorFailure alert for invalid RA"),
+        }
+
+        // Case 2: Invalid Declination (< -90.0)
+        let packet_dec = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::StarTracker,
+            payload: TelemetryPayload::StarTracker(StarTrackerReading {
+                target_id: Some(Cow::Borrowed("TestStar")),
+                coordinates: CelestialCoordinates {
+                    right_ascension: 0.0,
+                    declination: -100.0, // Invalid
+                },
+                confidence: 1.0,
+            }),
+        };
+
+        let event_dec = monitor.check(&packet_dec);
+        assert!(event_dec.is_some(), "Monitor should alert on Dec < -90.0");
+        let event_dec = event_dec.unwrap();
+        assert_eq!(event_dec.level, AlertLevel::Critical);
+        match event_dec.condition {
+            AlertCondition::SensorFailure { subsystem } => {
+                assert_eq!(subsystem, "StarTracker");
+            }
+            _ => panic!("Expected SensorFailure alert for invalid Dec"),
         }
     }
 }
