@@ -230,28 +230,29 @@ impl Monitor {
                 // Security Check: Ensure Target ID is a valid printable string (no control characters)
                 if let Some(id) = &data.target_id {
                     let mut has_control = false;
-                    for (i, &b) in id.as_bytes().iter().enumerate() {
+                    let bytes = id.as_bytes();
+                    for (i, &b) in bytes.iter().enumerate() {
                         if b < 32 || b == 127 {
                             has_control = true;
                             break;
                         }
-                        if b >= 128 {
-                            // Bolt Optimization: Fall back to full UTF-8 char check for non-ASCII
-                            // to ensure correct handling of Unicode control characters.
-                            // Start scan from current byte index to avoid rescanning ASCII prefix.
-                            // SAFETY: i is a valid byte index from the iterator, and since we iterate
-                            // bytes, slicing at i is safe if we are at an ASCII byte boundary,
-                            // but wait, if b >= 128, b is the *start* of a multibyte sequence.
-                            // So i is a valid char boundary.
-                            if id[i..].chars().any(|c| c.is_control()) {
-                                has_control = true;
+                        // Bolt Optimization: Check for C1 control characters (U+0080..U+009F).
+                        // In UTF-8, these are encoded as 0xC2 followed by 0x80..0x9F.
+                        // Since `Parser` guarantees valid UTF-8, if we see 0xC2, it must be followed by a continuation byte.
+                        // We check if that next byte is in the C1 range (0x80..0x9F).
+                        // This avoids the O(N) overhead of `chars().any()` which decodes every UTF-8 character.
+                        if b == 0xC2 {
+                            if let Some(&next) = bytes.get(i + 1) {
+                                if (0x80..=0x9F).contains(&next) {
+                                    has_control = true;
+                                    break;
+                                }
                             }
-                            break;
                         }
                     }
 
                     if has_control {
-                         return Some(MonitorEvent {
+                        return Some(MonitorEvent {
                             level: AlertLevel::Critical,
                             condition: AlertCondition::SensorFailure {
                                 subsystem: "StarTracker",
@@ -284,7 +285,9 @@ impl Monitor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{PowerData, Subsystem, TelemetryPayload, StarTrackerReading, CelestialCoordinates};
+    use crate::models::{
+        CelestialCoordinates, PowerData, StarTrackerReading, Subsystem, TelemetryPayload,
+    };
     use std::borrow::Cow;
 
     #[test]
@@ -293,24 +296,41 @@ mod tests {
 
         // 1. Battery Level Security
         // Try to set NaN
-        assert!(monitor.set_min_battery_level(f64::NAN).is_err(), "Should reject NaN battery");
+        assert!(
+            monitor.set_min_battery_level(f64::NAN).is_err(),
+            "Should reject NaN battery"
+        );
         // Try to set Inf
-        assert!(monitor.set_min_battery_level(f64::INFINITY).is_err(), "Should reject Inf battery");
+        assert!(
+            monitor.set_min_battery_level(f64::INFINITY).is_err(),
+            "Should reject Inf battery"
+        );
         // Try to set out of bounds (< 0)
-        assert!(monitor.set_min_battery_level(-1.0).is_err(), "Should reject negative battery");
+        assert!(
+            monitor.set_min_battery_level(-1.0).is_err(),
+            "Should reject negative battery"
+        );
         // Try to set out of bounds (> 100)
-        assert!(monitor.set_min_battery_level(101.0).is_err(), "Should reject >100 battery");
+        assert!(
+            monitor.set_min_battery_level(101.0).is_err(),
+            "Should reject >100 battery"
+        );
 
         // Valid set
         assert!(monitor.set_min_battery_level(15.0).is_ok());
         assert_eq!(monitor.min_battery_level(), 15.0);
 
-
         // 2. Star Confidence Security
         // Try to set NaN
-        assert!(monitor.set_min_star_confidence(f64::NAN).is_err(), "Should reject NaN confidence");
+        assert!(
+            monitor.set_min_star_confidence(f64::NAN).is_err(),
+            "Should reject NaN confidence"
+        );
         // Try to set out of bounds (> 1.0)
-        assert!(monitor.set_min_star_confidence(1.5).is_err(), "Should reject >1.0 confidence");
+        assert!(
+            monitor.set_min_star_confidence(1.5).is_err(),
+            "Should reject >1.0 confidence"
+        );
 
         // Valid set
         assert!(monitor.set_min_star_confidence(0.9).is_ok());
@@ -363,7 +383,10 @@ mod tests {
         };
 
         let event = monitor.check(&packet);
-        assert!(event.is_some(), "Monitor should alert on control characters in target_id");
+        assert!(
+            event.is_some(),
+            "Monitor should alert on control characters in target_id"
+        );
         let event = event.unwrap();
         assert_eq!(event.level, AlertLevel::Critical);
         match event.condition {
@@ -484,6 +507,38 @@ mod tests {
                 assert_eq!(subsystem, "StarTracker");
             }
             _ => panic!("Expected SensorFailure alert for invalid Dec"),
+        }
+    }
+
+    #[test]
+    fn test_monitor_c1_control_chars() {
+        let monitor = Monitor::default();
+        // C1 control character U+0080 is encoded as 0xC2 0x80 in UTF-8
+        let packet = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::StarTracker,
+            payload: TelemetryPayload::StarTracker(StarTrackerReading {
+                target_id: Some(Cow::Borrowed("Bad\u{0080}String")),
+                coordinates: CelestialCoordinates {
+                    right_ascension: 0.0,
+                    declination: 0.0,
+                },
+                confidence: 1.0,
+            }),
+        };
+
+        let event = monitor.check(&packet);
+        assert!(
+            event.is_some(),
+            "Monitor should alert on C1 control character U+0080"
+        );
+        let event = event.unwrap();
+        assert_eq!(event.level, AlertLevel::Critical);
+        match event.condition {
+            AlertCondition::SensorFailure { subsystem } => {
+                assert_eq!(subsystem, "StarTracker");
+            }
+            _ => panic!("Expected SensorFailure alert"),
         }
     }
 }
