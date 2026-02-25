@@ -369,13 +369,20 @@ impl eframe::App for AstroMonitorApp {
                     self.last_update = Instant::now();
                     self.paused = false;
                 }
+                // Palette UX Enhancement: Display frequency (Hz) alongside delay (ms)
+                let freq = 1000.0 / self.simulation_delay_ms as f64;
                 if ui
                     .add(
                         egui::Slider::new(&mut self.simulation_delay_ms, 100..=2000)
-                            .text("Delay (ms)"),
+                            .text(format!("Delay (ms) [{:.1} Hz]", freq)),
                     )
                     .on_hover_ui(|ui| {
                         ui.label("Adjust simulation speed (delay between packets in milliseconds)");
+                        ui.label(
+                            egui::RichText::new(format!("Frequency: {:.1} Hz", freq))
+                                .strong()
+                                .color(egui::Color32::LIGHT_BLUE),
+                        );
                     })
                     .changed()
                 {

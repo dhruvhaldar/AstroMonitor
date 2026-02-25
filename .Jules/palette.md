@@ -21,3 +21,7 @@
 ## 2024-10-24 - Visual Gauges using Progress Bars
 **Learning:** egui's `ProgressBar` can be effectively used as a compact visual gauge for scalar inputs by overriding the fill color based on thresholds. This provides immediate "pre-flight" validation feedback without requiring text alerts.
 **Action:** Use color-coded progress bars next to numeric inputs where safety thresholds exist.
+
+## 2024-05-29 - Contextual Configuration Units
+**Learning:** When configuring raw technical values (like milliseconds delay), providing the derived context (like Hz frequency) in the UI label significantly improves user understanding without cluttering the interface.
+**Action:** Use `format!` to append derived units to slider labels or tooltips.
