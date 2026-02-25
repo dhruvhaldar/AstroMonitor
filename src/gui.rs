@@ -138,15 +138,15 @@ impl Default for AstroMonitorApp {
         // Bolt Optimization: Pre-format tooltip strings to avoid allocation in render loop
         let cached_battery_tooltip = format!(
             "Values below {:.0}% will trigger a Critical alert",
-            monitor.min_battery_level
+            monitor.min_battery_level()
         );
         let cached_temp_tooltip = format!(
             "Values above {:.0}°C will trigger a Warning alert",
-            monitor.max_temp_celsius
+            monitor.max_temp_celsius()
         );
         let cached_star_tooltip = format!(
             "Values below {:.2} will trigger an Info alert",
-            monitor.min_star_confidence
+            monitor.min_star_confidence()
         );
 
         Self {
@@ -838,7 +838,7 @@ impl eframe::App for AstroMonitorApp {
 
                         // Palette UX Enhancement: Visual Battery Bar
                         let battery_pct = self.input_battery as f32 / 100.0;
-                        let battery_color = if self.input_battery < self.monitor.min_battery_level {
+                        let battery_color = if self.input_battery < self.monitor.min_battery_level() {
                             egui::Color32::RED
                         } else if self.input_battery < 50.0 {
                             egui::Color32::YELLOW
@@ -853,7 +853,7 @@ impl eframe::App for AstroMonitorApp {
                         )
                         .on_hover_text("Visual indicator of battery health");
 
-                        if self.input_battery < self.monitor.min_battery_level {
+                        if self.input_battery < self.monitor.min_battery_level() {
                             // Bolt Optimization: Use colored_label to avoid RichText allocation
                             ui.colored_label(egui::Color32::RED, "⚠").on_hover_ui(|ui| {
                                 ui.label(&self.cached_battery_tooltip);
@@ -872,7 +872,7 @@ impl eframe::App for AstroMonitorApp {
                         .on_hover_ui(|ui| {
                             ui.label("Sensor Temperature (°C)");
                         });
-                        if self.input_temp > self.monitor.max_temp_celsius {
+                        if self.input_temp > self.monitor.max_temp_celsius() {
                             // Bolt Optimization: Use colored_label to avoid RichText allocation
                             ui.colored_label(egui::Color32::YELLOW, "⚠")
                                 .on_hover_ui(|ui| {
@@ -913,7 +913,7 @@ impl eframe::App for AstroMonitorApp {
 
                         // Palette UX Enhancement: Visual Confidence Bar
                         let conf_color =
-                            if self.input_confidence < self.monitor.min_star_confidence {
+                            if self.input_confidence < self.monitor.min_star_confidence() {
                                 egui::Color32::RED
                             } else {
                                 egui::Color32::GREEN
@@ -925,7 +925,7 @@ impl eframe::App for AstroMonitorApp {
                         )
                         .on_hover_text("Visual indicator of star match confidence");
 
-                        if self.input_confidence < self.monitor.min_star_confidence {
+                        if self.input_confidence < self.monitor.min_star_confidence() {
                             // Bolt Optimization: Use colored_label to avoid RichText allocation
                             ui.colored_label(egui::Color32::LIGHT_BLUE, "ℹ")
                                 .on_hover_ui(|ui| {
@@ -1360,18 +1360,18 @@ impl AstroMonitorApp {
             match self.input_subsystem {
                 InputSubsystem::Power => {
                     // Trigger Critical Low Battery
-                    self.input_battery = self.monitor.min_battery_level - 5.0;
+                    self.input_battery = self.monitor.min_battery_level() - 5.0;
                     if self.input_battery < 0.0 {
                         self.input_battery = 0.0;
                     }
                 }
                 InputSubsystem::Thermal => {
                     // Trigger Warning High Temp
-                    self.input_temp = self.monitor.max_temp_celsius + 5.0;
+                    self.input_temp = self.monitor.max_temp_celsius() + 5.0;
                 }
                 InputSubsystem::StarTracker => {
                     // Trigger Info Low Confidence
-                    self.input_confidence = self.monitor.min_star_confidence - 0.1;
+                    self.input_confidence = self.monitor.min_star_confidence() - 0.1;
                     if self.input_confidence < 0.0 {
                         self.input_confidence = 0.0;
                     }
@@ -1626,7 +1626,7 @@ mod tests {
         assert_eq!(app.input_battery, 95.0);
 
         app.apply_preset(true); // Alert
-        assert_eq!(app.input_battery, app.monitor.min_battery_level - 5.0);
+        assert_eq!(app.input_battery, app.monitor.min_battery_level() - 5.0);
 
         // 2. Thermal Subsystem
         app.input_subsystem = InputSubsystem::Thermal;
@@ -1634,7 +1634,7 @@ mod tests {
         assert_eq!(app.input_temp, 25.0);
 
         app.apply_preset(true); // Alert
-        assert_eq!(app.input_temp, app.monitor.max_temp_celsius + 5.0);
+        assert_eq!(app.input_temp, app.monitor.max_temp_celsius() + 5.0);
 
         // 3. StarTracker Subsystem
         app.input_subsystem = InputSubsystem::StarTracker;
@@ -1643,7 +1643,7 @@ mod tests {
         assert_eq!(app.input_target, "Sirius");
 
         app.apply_preset(true); // Alert
-        assert_eq!(app.input_confidence, app.monitor.min_star_confidence - 0.1);
+        assert_eq!(app.input_confidence, app.monitor.min_star_confidence() - 0.1);
     }
 }
 

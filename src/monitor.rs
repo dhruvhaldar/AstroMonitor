@@ -67,10 +67,10 @@ impl From<MonitorEvent> for Alert {
 }
 
 pub struct Monitor {
-    // Thresholds
-    pub min_battery_level: f64,
-    pub max_temp_celsius: f64,
-    pub min_star_confidence: f64,
+    // Thresholds - Encapsulated to prevent invalid states (e.g., NaN)
+    min_battery_level: f64,
+    max_temp_celsius: f64,
+    min_star_confidence: f64,
 }
 
 impl Default for Monitor {
@@ -84,12 +84,58 @@ impl Default for Monitor {
 }
 
 impl Monitor {
-    pub fn new(min_battery_level: f64, max_temp_celsius: f64, min_star_confidence: f64) -> Self {
-        Self {
-            min_battery_level,
-            max_temp_celsius,
-            min_star_confidence,
+    pub fn new(
+        min_battery_level: f64,
+        max_temp_celsius: f64,
+        min_star_confidence: f64,
+    ) -> Result<Self, &'static str> {
+        let mut monitor = Self::default();
+        monitor.set_min_battery_level(min_battery_level)?;
+        monitor.set_max_temp_celsius(max_temp_celsius)?;
+        monitor.set_min_star_confidence(min_star_confidence)?;
+        Ok(monitor)
+    }
+
+    pub fn min_battery_level(&self) -> f64 {
+        self.min_battery_level
+    }
+
+    pub fn set_min_battery_level(&mut self, val: f64) -> Result<(), &'static str> {
+        if !val.is_finite() {
+            return Err("Battery level threshold must be finite");
         }
+        if !(0.0..=100.0).contains(&val) {
+            return Err("Battery level threshold must be between 0.0 and 100.0");
+        }
+        self.min_battery_level = val;
+        Ok(())
+    }
+
+    pub fn max_temp_celsius(&self) -> f64 {
+        self.max_temp_celsius
+    }
+
+    pub fn set_max_temp_celsius(&mut self, val: f64) -> Result<(), &'static str> {
+        if !val.is_finite() {
+            return Err("Temperature threshold must be finite");
+        }
+        self.max_temp_celsius = val;
+        Ok(())
+    }
+
+    pub fn min_star_confidence(&self) -> f64 {
+        self.min_star_confidence
+    }
+
+    pub fn set_min_star_confidence(&mut self, val: f64) -> Result<(), &'static str> {
+        if !val.is_finite() {
+            return Err("Star confidence threshold must be finite");
+        }
+        if !(0.0..=1.0).contains(&val) {
+            return Err("Star confidence threshold must be between 0.0 and 1.0");
+        }
+        self.min_star_confidence = val;
+        Ok(())
     }
 
     pub fn check(&self, packet: &TelemetryPacket<'_>) -> Option<MonitorEvent> {
@@ -240,6 +286,40 @@ mod tests {
     use super::*;
     use crate::models::{PowerData, Subsystem, TelemetryPayload, StarTrackerReading, CelestialCoordinates};
     use std::borrow::Cow;
+
+    #[test]
+    fn test_monitor_encapsulation_security() {
+        let mut monitor = Monitor::default();
+
+        // 1. Battery Level Security
+        // Try to set NaN
+        assert!(monitor.set_min_battery_level(f64::NAN).is_err(), "Should reject NaN battery");
+        // Try to set Inf
+        assert!(monitor.set_min_battery_level(f64::INFINITY).is_err(), "Should reject Inf battery");
+        // Try to set out of bounds (< 0)
+        assert!(monitor.set_min_battery_level(-1.0).is_err(), "Should reject negative battery");
+        // Try to set out of bounds (> 100)
+        assert!(monitor.set_min_battery_level(101.0).is_err(), "Should reject >100 battery");
+
+        // Valid set
+        assert!(monitor.set_min_battery_level(15.0).is_ok());
+        assert_eq!(monitor.min_battery_level(), 15.0);
+
+
+        // 2. Star Confidence Security
+        // Try to set NaN
+        assert!(monitor.set_min_star_confidence(f64::NAN).is_err(), "Should reject NaN confidence");
+        // Try to set out of bounds (> 1.0)
+        assert!(monitor.set_min_star_confidence(1.5).is_err(), "Should reject >1.0 confidence");
+
+        // Valid set
+        assert!(monitor.set_min_star_confidence(0.9).is_ok());
+        assert_eq!(monitor.min_star_confidence(), 0.9);
+
+        // 3. Constructor Security
+        let res = Monitor::new(f64::NAN, 80.0, 0.8);
+        assert!(res.is_err(), "Constructor should reject NaN");
+    }
 
     #[test]
     fn test_monitor_alerts_on_nan() {
