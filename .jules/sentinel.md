@@ -37,3 +37,8 @@
 **Vulnerability:** The `Monitor` logic checked that coordinate values were `finite` but did not validate their physical ranges (RA: 0-360, Dec: -90-+90). This allowed nonsensical values (e.g., RA=400.0) to be processed without raising a `SensorFailure`.
 **Learning:** Physical systems often have implicit constraints that are not enforced by data types (e.g., `f64` covers all real numbers). "Valid float" != "Valid coordinate".
 **Prevention:** Implement strict domain validation for all physical quantities at the ingestion layer, ensuring values fall within their defined physical limits before any business logic is applied.
+
+## 2025-05-27 - Monitor Configuration Bypass (NaN Thresholds)
+**Vulnerability:** The `Monitor` struct exposed public fields for thresholds (e.g., `min_battery_level`). If set to `NaN` (accidentally or maliciously), the alert logic `value < NaN` always evaluates to false, silently disabling critical alerts.
+**Learning:** Publicly mutable configuration structs bypass invariants. Type safety alone (`f64`) is insufficient to guarantee valid configuration state.
+**Prevention:** Encapsulate configuration fields as private members. Use constructor and setter methods that enforce validation logic (e.g., reject `NaN` / `Inf`) to ensure the system is always in a valid, safe state.
