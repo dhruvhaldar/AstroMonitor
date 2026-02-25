@@ -1056,7 +1056,11 @@ impl AstroMonitorApp {
     }
 
     // Bolt Optimization: Helper to resolve log entry text (deferred formatting)
-    fn resolve_log_entry_text<'a>(&self, entry: &'a LogEntry, ui: &egui::Ui) -> ResolvedLogText<'a> {
+    fn resolve_log_entry_text<'a>(
+        &self,
+        entry: &'a LogEntry,
+        ui: &egui::Ui,
+    ) -> ResolvedLogText<'a> {
         match entry {
             LogEntry::SimulatedPacket(idx) => {
                 let packet_idx = *idx;
@@ -1643,7 +1647,10 @@ mod tests {
         assert_eq!(app.input_target, "Sirius");
 
         app.apply_preset(true); // Alert
-        assert_eq!(app.input_confidence, app.monitor.min_star_confidence() - 0.1);
+        assert_eq!(
+            app.input_confidence,
+            app.monitor.min_star_confidence() - 0.1
+        );
     }
 }
 

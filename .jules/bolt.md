@@ -13,3 +13,7 @@
 ## 2025-02-18 - [Trusted Data Parsing Optimization]
 **Learning:** Redundantly validating data integrity (checksums) for data that is already inside the system's trust boundary (e.g., internal history buffers) is a waste of cycles, especially in render loops.
 **Action:** Implement `parse_trusted` or similar methods that skip expensive validation steps for internal data, while keeping full validation for external inputs.
+
+## 2025-02-18 - [Optimized Byte-Level String Validation]
+**Learning:** `chars().any(|c| c.is_control())` on a string performs UTF-8 decoding for every character, which is O(N) but involves bitwise operations and branching. For simple validation like "no control characters", scanning the raw bytes is significantly faster (~2x) because ASCII control characters are single bytes (< 32 or == 127) and C1 control characters (U+0080..U+009F) are encoded as `0xC2` followed by `0x80..0x9F`.
+**Action:** When validating strings for specific character classes (like control chars) where the encoding allows for byte-level detection (and the string is already known to be valid UTF-8), prefer iterating `as_bytes()` over `chars()`.
