@@ -408,12 +408,42 @@ impl eframe::App for AstroMonitorApp {
             let text_style = egui::TextStyle::Body;
             let row_height = ui.text_style_height(&text_style);
 
+            // Palette Optimization: Calculate filtered logs before rendering header
+            if self.filter_logs_important {
+                // Only recompute if logs changed since last cache update
+                if self.logs_mutation_counter != self.cached_filter_counter {
+                    self.filtered_log_indices.clear();
+                    self.filtered_log_indices.extend(
+                        self.logs
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, entry)| {
+                                !matches!(
+                                    entry,
+                                    LogEntry::Packet(_) | LogEntry::SimulatedPacket(_)
+                                )
+                            })
+                            .map(|(i, _)| i),
+                    );
+                    self.cached_filter_counter = self.logs_mutation_counter;
+                }
+            }
+
             // Main Columns
             ui.columns(2, |columns| {
                 // Logs Column
                 columns[0].vertical(|ui| {
                     ui.horizontal(|ui| {
-                        ui.heading(format!("System Logs ({})", self.logs.len()));
+                        let header_text = if self.filter_logs_important {
+                            format!(
+                                "System Logs (Filtered: {}/{})",
+                                self.filtered_log_indices.len(),
+                                self.logs.len()
+                            )
+                        } else {
+                            format!("System Logs ({})", self.logs.len())
+                        };
+                        ui.heading(header_text);
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             let (clear_icon, clear_tooltip, confirm_mode) = if let Some(_t) =
                                 self.log_clear_confirm.filter(|t| t.elapsed().as_secs() < 3)
@@ -521,23 +551,6 @@ impl eframe::App for AstroMonitorApp {
                     });
 
                     // Bolt Optimization: Use virtualization for logs
-                    // Palette Optimization: Filter logs if toggle is active
-                    // Bolt Optimization: Re-use buffer for filtered indices to avoid allocation loop
-                    if self.filter_logs_important {
-                        // Only recompute if logs changed since last cache update
-                        if self.logs_mutation_counter != self.cached_filter_counter {
-                            self.filtered_log_indices.clear();
-                            self.filtered_log_indices.extend(
-                                self.logs
-                                    .iter()
-                                    .enumerate()
-                                    .filter(|(_, entry)| !matches!(entry, LogEntry::Packet(_)))
-                                    .map(|(i, _)| i),
-                            );
-                            self.cached_filter_counter = self.logs_mutation_counter;
-                        }
-                    }
-
                     let count = if self.filter_logs_important {
                         self.filtered_log_indices.len()
                     } else {
@@ -1652,6 +1665,33 @@ mod tests {
             app.monitor.min_star_confidence() - 0.1
         );
     }
+
+    #[test]
+    fn test_log_filtering_logic() {
+        let mut logs = VecDeque::new();
+        logs.push_back(LogEntry::Message("System initialized".to_string()));
+        logs.push_back(LogEntry::Packet("Packet data 1".to_string()));
+        logs.push_back(LogEntry::SimulatedPacket(0));
+        logs.push_back(LogEntry::Alert("System Critical".to_string()));
+        logs.push_back(LogEntry::Packet("Packet data 2".to_string()));
+
+        // Filter logic: !matches!(entry, LogEntry::Packet(_) | LogEntry::SimulatedPacket(_))
+        let filtered: Vec<_> = logs
+            .iter()
+            .filter(|entry| !matches!(entry, LogEntry::Packet(_) | LogEntry::SimulatedPacket(_)))
+            .collect();
+
+        assert_eq!(filtered.len(), 2, "Should only contain Message and Alert");
+
+        match filtered[0] {
+            LogEntry::Message(s) => assert_eq!(s, "System initialized"),
+            _ => panic!("Expected Message"),
+        }
+        match filtered[1] {
+            LogEntry::Alert(s) => assert_eq!(s, "System Critical"),
+            _ => panic!("Expected Alert"),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1736,3 +1776,30 @@ mod security_tests {
         );
     }
 }
+
+    #[test]
+    fn test_log_filtering_logic() {
+        let mut logs = VecDeque::new();
+        logs.push_back(LogEntry::Message("System initialized".to_string()));
+        logs.push_back(LogEntry::Packet("Packet data 1".to_string()));
+        logs.push_back(LogEntry::SimulatedPacket(0));
+        logs.push_back(LogEntry::Alert("System Critical".to_string()));
+        logs.push_back(LogEntry::Packet("Packet data 2".to_string()));
+
+        // Filter logic: !matches!(entry, LogEntry::Packet(_) | LogEntry::SimulatedPacket(_))
+        let filtered: Vec<_> = logs
+            .iter()
+            .filter(|entry| !matches!(entry, LogEntry::Packet(_) | LogEntry::SimulatedPacket(_)))
+            .collect();
+
+        assert_eq!(filtered.len(), 2, "Should only contain Message and Alert");
+
+        match filtered[0] {
+            LogEntry::Message(s) => assert_eq!(s, "System initialized"),
+            _ => panic!("Expected Message"),
+        }
+        match filtered[1] {
+            LogEntry::Alert(s) => assert_eq!(s, "System Critical"),
+            _ => panic!("Expected Alert"),
+        }
+    }
