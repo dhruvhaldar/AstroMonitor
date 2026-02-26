@@ -251,6 +251,27 @@ impl Monitor {
                                 }
                             }
                         }
+                        // Bolt Optimization: Check for BiDi control characters (U+202A..U+202E, U+2066..U+2069).
+                        // In UTF-8, these are encoded as:
+                        // U+202x: 0xE2 0x80 0x80..0xBF (specifically 0xE2 0x80 0xAA..0xAE for our range)
+                        // U+206x: 0xE2 0x81 0x80..0xBF (specifically 0xE2 0x81 0xA6..0xA9 for our range)
+                        if b == 0xE2 {
+                            let slice = bytes.as_slice();
+                            if slice.len() >= 2 {
+                                let b2 = slice[0];
+                                let b3 = slice[1];
+                                // Check U+202A..U+202E (0xE2 0x80 0xAA..0xAE)
+                                if b2 == 0x80 && (0xAA..=0xAE).contains(&b3) {
+                                    has_control = true;
+                                    break;
+                                }
+                                // Check U+2066..U+2069 (0xE2 0x81 0xA6..0xA9)
+                                if b2 == 0x81 && (0xA6..=0xA9).contains(&b3) {
+                                    has_control = true;
+                                    break;
+                                }
+                            }
+                        }
                     }
 
                     if has_control {
@@ -570,5 +591,38 @@ mod tests {
             start.elapsed(),
             iterations
         );
+    }
+
+    #[test]
+    fn test_monitor_rtlo_spoofing() {
+        let monitor = Monitor::default();
+        // RTLO (U+202E) is used to reverse text direction, often used to mask file extensions
+        // e.g. "codexec.txt" -> "codetxt.exe"
+        let packet = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::StarTracker,
+            payload: TelemetryPayload::StarTracker(StarTrackerReading {
+                target_id: Some(Cow::Borrowed("Safe\u{202E}txt.exe")),
+                coordinates: CelestialCoordinates {
+                    right_ascension: 0.0,
+                    declination: 0.0,
+                },
+                confidence: 1.0,
+            }),
+        };
+
+        let event = monitor.check(&packet);
+        assert!(
+            event.is_some(),
+            "Monitor should alert on RTLO control character U+202E"
+        );
+        let event = event.unwrap();
+        assert_eq!(event.level, AlertLevel::Critical);
+        match event.condition {
+            AlertCondition::SensorFailure { subsystem } => {
+                assert_eq!(subsystem, "StarTracker");
+            }
+            _ => panic!("Expected SensorFailure alert"),
+        }
     }
 }

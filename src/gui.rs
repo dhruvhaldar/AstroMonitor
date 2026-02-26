@@ -1777,29 +1777,29 @@ mod security_tests {
     }
 }
 
-    #[test]
-    fn test_log_filtering_logic() {
-        let mut logs = VecDeque::new();
-        logs.push_back(LogEntry::Message("System initialized".to_string()));
-        logs.push_back(LogEntry::Packet("Packet data 1".to_string()));
-        logs.push_back(LogEntry::SimulatedPacket(0));
-        logs.push_back(LogEntry::Alert("System Critical".to_string()));
-        logs.push_back(LogEntry::Packet("Packet data 2".to_string()));
+#[test]
+fn test_log_filtering_logic() {
+    let mut logs = VecDeque::new();
+    logs.push_back(LogEntry::Message("System initialized".to_string()));
+    logs.push_back(LogEntry::Packet("Packet data 1".to_string()));
+    logs.push_back(LogEntry::SimulatedPacket(0));
+    logs.push_back(LogEntry::Alert("System Critical".to_string()));
+    logs.push_back(LogEntry::Packet("Packet data 2".to_string()));
 
-        // Filter logic: !matches!(entry, LogEntry::Packet(_) | LogEntry::SimulatedPacket(_))
-        let filtered: Vec<_> = logs
-            .iter()
-            .filter(|entry| !matches!(entry, LogEntry::Packet(_) | LogEntry::SimulatedPacket(_)))
-            .collect();
+    // Filter logic: !matches!(entry, LogEntry::Packet(_) | LogEntry::SimulatedPacket(_))
+    let filtered: Vec<_> = logs
+        .iter()
+        .filter(|entry| !matches!(entry, LogEntry::Packet(_) | LogEntry::SimulatedPacket(_)))
+        .collect();
 
-        assert_eq!(filtered.len(), 2, "Should only contain Message and Alert");
+    assert_eq!(filtered.len(), 2, "Should only contain Message and Alert");
 
-        match filtered[0] {
-            LogEntry::Message(s) => assert_eq!(s, "System initialized"),
-            _ => panic!("Expected Message"),
-        }
-        match filtered[1] {
-            LogEntry::Alert(s) => assert_eq!(s, "System Critical"),
-            _ => panic!("Expected Alert"),
-        }
+    match filtered[0] {
+        LogEntry::Message(s) => assert_eq!(s, "System initialized"),
+        _ => panic!("Expected Message"),
     }
+    match filtered[1] {
+        LogEntry::Alert(s) => assert_eq!(s, "System Critical"),
+        _ => panic!("Expected Alert"),
+    }
+}
