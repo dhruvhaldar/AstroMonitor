@@ -49,6 +49,19 @@ pub struct MonitorEvent {
     pub timestamp: u64,
 }
 
+impl AlertCondition {
+    /// Returns a stable identifier for the alert type, ignoring dynamic values.
+    /// This is used for rate-limiting identical alerts.
+    pub fn kind(&self) -> String {
+        match self {
+            AlertCondition::LowBattery { .. } => "LowBattery".to_string(),
+            AlertCondition::HighTemperature { .. } => "HighTemperature".to_string(),
+            AlertCondition::LowStarConfidence { .. } => "LowStarConfidence".to_string(),
+            AlertCondition::SensorFailure { subsystem } => format!("SensorFailure:{}", subsystem),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, PartialEq)]
 pub struct Alert {
     pub level: AlertLevel,

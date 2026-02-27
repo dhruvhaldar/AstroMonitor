@@ -4,7 +4,7 @@ use crate::{
 };
 use eframe::egui;
 use log::{debug, error, info, warn};
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::fmt::Write;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -114,6 +114,9 @@ pub struct AstroMonitorApp {
     last_nominal_apply_time: Option<Instant>,
     last_alert_apply_time: Option<Instant>,
 
+    // Rate Limiting
+    alert_cooldowns: HashMap<String, Instant>,
+
     // Filters
     filter_logs_important: bool,
 
@@ -172,6 +175,8 @@ impl Default for AstroMonitorApp {
             last_nominal_apply_time: None,
             last_alert_apply_time: None,
 
+            alert_cooldowns: HashMap::new(),
+
             filter_logs_important: false,
             filtered_log_indices: Vec::with_capacity(MAX_LOGS),
             logs_mutation_counter: 0,
@@ -216,6 +221,7 @@ impl eframe::App for AstroMonitorApp {
                     &mut self.logs,
                     &mut self.alerts,
                     &mut self.alert_counts,
+                    &mut self.alert_cooldowns,
                     &self.monitor,
                     result,
                     Some(self.packet_index + 1),
@@ -1015,6 +1021,7 @@ impl eframe::App for AstroMonitorApp {
                     &mut self.logs,
                     &mut self.alerts,
                     &mut self.alert_counts,
+                    &mut self.alert_cooldowns,
                     &self.monitor,
                     result,
                     None,
@@ -1266,6 +1273,7 @@ impl AstroMonitorApp {
         logs: &mut VecDeque<LogEntry>,
         alerts: &mut VecDeque<AlertEntry>,
         alert_counts: &mut [usize; 3],
+        alert_cooldowns: &mut HashMap<String, Instant>,
         monitor: &Monitor,
         result: Result<TelemetryPacket<'_>, ParserError>,
         index: Option<usize>,
@@ -1302,6 +1310,18 @@ impl AstroMonitorApp {
                 // which avoids allocating a String for the alert message before it's needed.
                 // We format directly into the log and display strings, saving 1 allocation per alert.
                 if let Some(event) = alert_event {
+                    // Security Fix: Rate Limit Alerts
+                    // Prevent Denial of Service (DoS) via log flooding by checking a cooldown period
+                    // for identical alert types (ignoring dynamic values like slight voltage fluctuations).
+                    let alert_key = event.condition.kind();
+                    if let Some(last_time) = alert_cooldowns.get(&alert_key) {
+                        if last_time.elapsed() < Duration::from_secs(5) {
+                            // Rate limit active: Skip logging and UI update for this alert
+                            return;
+                        }
+                    }
+                    alert_cooldowns.insert(alert_key, Instant::now());
+
                     // Bolt Optimization: Format alert string immediately for log
                     let mut alert_text = Self::get_recycled_log_buffer(logs);
                     Self::format_log_alert(&mut alert_text, &event);
@@ -1478,6 +1498,7 @@ mod tests {
         let mut logs = VecDeque::new();
         let mut alerts = VecDeque::new();
         let mut alert_counts = [0, 0, 0];
+        let mut alert_cooldowns = HashMap::new();
         let monitor = Monitor::default();
 
         // 1627849200 = 20:20:00 UTC
@@ -1497,6 +1518,7 @@ mod tests {
             &mut logs,
             &mut alerts,
             &mut alert_counts,
+            &mut alert_cooldowns,
             &monitor,
             Ok(packet.clone()),
             None,
@@ -1512,6 +1534,7 @@ mod tests {
             &mut logs,
             &mut alerts,
             &mut alert_counts,
+            &mut alert_cooldowns,
             &monitor,
             Ok(packet),
             Some(1),
@@ -1538,6 +1561,7 @@ mod tests {
             &mut logs,
             &mut alerts,
             &mut alert_counts,
+            &mut alert_cooldowns,
             &monitor,
             Ok(packet_alert),
             Some(2),
