@@ -1,9 +1,6 @@
 pub fn calculate_checksum(data: &[u8]) -> u8 {
-    let mut checksum = 0;
-    for &byte in data {
-        checksum ^= byte;
-    }
-    checksum
+    // Bolt Optimization: Use iterator fold for better autovectorization
+    data.iter().fold(0, |acc, &x| acc ^ x)
 }
 
 pub fn generate_simulated_packets() -> Vec<Vec<u8>> {
