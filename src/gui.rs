@@ -459,9 +459,7 @@ impl eframe::App for AstroMonitorApp {
                                 self.last_log_clear_time.filter(|t| t.elapsed().as_secs() < 2)
                             {
                                 ("✔", "Cleared!", false)
-                            } else {
-                                ("🗑", "Clear logs", false)
-                            };
+                            } else if self.logs.is_empty() { ("🗑", "Logs are already empty", false) } else { ("🗑", "Clear logs", false) };
 
                             let btn = if confirm_mode {
                                 ui.add(
@@ -471,7 +469,7 @@ impl eframe::App for AstroMonitorApp {
                                     .fill(egui::Color32::from_rgb(50, 0, 0)),
                                 )
                             } else {
-                                ui.button(clear_icon)
+                                ui.add_enabled(!self.logs.is_empty(), egui::Button::new(clear_icon))
                             };
 
                             if btn
@@ -499,11 +497,9 @@ impl eframe::App for AstroMonitorApp {
                                 .filter(|t| t.elapsed().as_secs() < 2)
                             {
                                 ("✔", "Copied!")
-                            } else {
-                                ("📋", "Copy logs to clipboard")
-                            };
+                            } else if self.logs.is_empty() { ("📋", "No logs to copy") } else { ("📋", "Copy logs to clipboard") };
                             if ui
-                                .button(icon)
+                                .add_enabled(!self.logs.is_empty(), egui::Button::new(icon))
                                 .on_hover_ui(|ui| {
                                     ui.label(tooltip);
                                 })
@@ -632,9 +628,7 @@ impl eframe::App for AstroMonitorApp {
                                 self.last_alert_clear_time.filter(|t| t.elapsed().as_secs() < 2)
                             {
                                 ("✔", "Cleared!", false)
-                            } else {
-                                ("🗑", "Clear alerts", false)
-                            };
+                            } else if self.alerts.is_empty() { ("🗑", "Alerts are already empty", false) } else { ("🗑", "Clear alerts", false) };
 
                             let btn = if confirm_mode {
                                 ui.add(
@@ -644,7 +638,7 @@ impl eframe::App for AstroMonitorApp {
                                     .fill(egui::Color32::from_rgb(50, 0, 0)),
                                 )
                             } else {
-                                ui.button(clear_icon)
+                                ui.add_enabled(!self.alerts.is_empty(), egui::Button::new(clear_icon))
                             };
 
                             if btn
@@ -671,11 +665,9 @@ impl eframe::App for AstroMonitorApp {
                                 .filter(|t| t.elapsed().as_secs() < 2)
                             {
                                 ("✔", "Copied!")
-                            } else {
-                                ("📋", "Copy alerts to clipboard")
-                            };
+                            } else if self.alerts.is_empty() { ("📋", "No alerts to copy") } else { ("📋", "Copy alerts to clipboard") };
                             if ui
-                                .button(icon)
+                                .add_enabled(!self.alerts.is_empty(), egui::Button::new(icon))
                                 .on_hover_ui(|ui| {
                                     ui.label(tooltip);
                                 })
