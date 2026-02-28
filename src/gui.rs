@@ -969,7 +969,7 @@ impl eframe::App for AstroMonitorApp {
                             });
 
                         // Palette UX Enhancement: Inline Security Warning
-                        if self.input_target.starts_with(&['=', '+', '-', '@'][..]) {
+                        if self.input_target.trim_start().starts_with(&['=', '+', '-', '@'][..]) {
                             ui.colored_label(egui::Color32::YELLOW, "⚠")
                                 .on_hover_ui(|ui| {
                                     ui.label(
@@ -1167,7 +1167,7 @@ impl AstroMonitorApp {
                 );
                 if let Some(id) = &d.target_id {
                     // Security Fix: Sanitize ID to prevent Log Injection AND CSV Injection
-                    let prefix = if id.starts_with(&['=', '+', '-', '@'][..]) {
+                    let prefix = if id.trim_start().starts_with(&['=', '+', '-', '@'][..]) {
                         "'"
                     } else {
                         ""
@@ -1789,6 +1789,36 @@ mod security_tests {
             log_output.contains("ID:'=1+1"),
             "CSV Injection Vulnerability: Output '{}' should contain escaped formula (ID:'=1+1)",
             log_output
+        );
+
+        // Construct a packet with leading whitespace before a malicious CSV payload
+        let malicious_id_with_space = "   =cmd|' /C calc'!A0";
+        let packet_with_space = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::StarTracker,
+            payload: TelemetryPayload::StarTracker(StarTrackerReading {
+                target_id: Some(Cow::Borrowed(malicious_id_with_space)),
+                coordinates: CelestialCoordinates {
+                    right_ascension: 0.0,
+                    declination: 0.0,
+                },
+                confidence: 1.0,
+            }),
+        };
+
+        let mut log_output_with_space = String::new();
+        AstroMonitorApp::format_log_packet(
+            &mut log_output_with_space,
+            packet_with_space.timestamp,
+            Some(1),
+            &packet_with_space.payload,
+        );
+
+        // Assert that the formula with leading space is ESCAPED by prepending a quote
+        assert!(
+            log_output_with_space.contains("ID:'   =cmd"),
+            "CSV Injection Vulnerability: Output '{}' should contain escaped formula with leading space (ID:'   =cmd)",
+            log_output_with_space
         );
     }
 }
