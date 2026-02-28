@@ -25,3 +25,7 @@
 ## 2024-05-29 - Contextual Configuration Units
 **Learning:** When configuring raw technical values (like milliseconds delay), providing the derived context (like Hz frequency) in the UI label significantly improves user understanding without cluttering the interface.
 **Action:** Use `format!` to append derived units to slider labels or tooltips.
+
+## 2024-10-25 - Disabled Action States for Empty Collections
+**Learning:** For actions acting on collections (like clearing or copying lists), users might not realize the actions do nothing if the collection is empty.
+**Action:** Dynamically disable the action button and use `on_hover_ui` to show tooltips explaining the reason it's disabled (e.g. "Logs are already empty").
