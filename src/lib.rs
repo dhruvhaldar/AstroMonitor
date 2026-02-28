@@ -9,7 +9,7 @@ pub mod parser;
 pub use parser::{Parser, ParserError};
 
 pub mod monitor;
-pub use monitor::{Alert, AlertCondition, AlertLevel, Monitor, MonitorEvent};
+pub use monitor::{Alert, AlertCondition, AlertKind, AlertLevel, Monitor, MonitorEvent};
 
 pub mod simulation;
 
