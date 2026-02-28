@@ -336,7 +336,8 @@ impl eframe::App for AstroMonitorApp {
                     .restart_confirm_time
                     .filter(|t| t.elapsed().as_secs() < 3)
                 {
-                    let btn = ui.add(
+                    let btn = ui.add_sized(
+                        [100.0, 0.0],
                         egui::Button::new(
                             egui::RichText::new("⚠ Confirm?").color(egui::Color32::RED),
                         )
@@ -355,7 +356,7 @@ impl eframe::App for AstroMonitorApp {
                     }
                 } else {
                     if ui
-                        .button("↻ Restart")
+                        .add_sized([100.0, 0.0], egui::Button::new("↻ Restart"))
                         .on_hover_ui(|ui| {
                             ui.label("⚠ Clears all logs, alerts, and restarts the simulation.");
                         })
@@ -779,7 +780,7 @@ impl eframe::App for AstroMonitorApp {
                 };
 
                 if ui
-                    .button(nom_text)
+                    .add_sized([110.0, 0.0], egui::Button::new(nom_text))
                     .on_hover_ui(|ui| {
                         ui.label(nom_tooltip);
                     })
@@ -803,7 +804,7 @@ impl eframe::App for AstroMonitorApp {
                 };
 
                 if ui
-                    .button(alert_text)
+                    .add_sized([120.0, 0.0], egui::Button::new(alert_text))
                     .on_hover_ui(|ui| {
                         ui.label(alert_tooltip);
                     })
@@ -1000,7 +1001,7 @@ impl eframe::App for AstroMonitorApp {
             };
 
             if ui
-                .button(button_text)
+                .add_sized([120.0, 0.0], egui::Button::new(button_text))
                 .on_hover_ui(|ui| {
                     ui.label(button_tooltip);
                 })

@@ -29,3 +29,7 @@
 ## 2024-10-25 - Disabled Action States for Empty Collections
 **Learning:** For actions acting on collections (like clearing or copying lists), users might not realize the actions do nothing if the collection is empty.
 **Action:** Dynamically disable the action button and use `on_hover_ui` to show tooltips explaining the reason it's disabled (e.g. "Logs are already empty").
+
+## 2024-10-25 - Transient Button Layout Shifts
+**Learning:** In immediate mode GUIs like `egui`, buttons automatically resize to fit their text content. When providing transient feedback (e.g., changing "Action" to "✔ Done"), this causes layout shifts that feel janky to the user.
+**Action:** Wrap transient buttons in `ui.add_sized([width, 0.0], ...)` to enforce a fixed width wide enough to accommodate both text states.
