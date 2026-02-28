@@ -49,15 +49,25 @@ pub struct MonitorEvent {
     pub timestamp: u64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum AlertKind {
+    LowBattery,
+    HighTemperature,
+    LowStarConfidence,
+    SensorFailure(&'static str),
+}
+
 impl AlertCondition {
     /// Returns a stable identifier for the alert type, ignoring dynamic values.
     /// This is used for rate-limiting identical alerts.
-    pub fn kind(&self) -> String {
+    /// Bolt Optimization: Returns an enum `AlertKind` instead of formatting a `String`
+    /// to avoid dynamic memory allocation on the hot path for alert rate limiting checks.
+    pub fn kind(&self) -> AlertKind {
         match self {
-            AlertCondition::LowBattery { .. } => "LowBattery".to_string(),
-            AlertCondition::HighTemperature { .. } => "HighTemperature".to_string(),
-            AlertCondition::LowStarConfidence { .. } => "LowStarConfidence".to_string(),
-            AlertCondition::SensorFailure { subsystem } => format!("SensorFailure:{}", subsystem),
+            AlertCondition::LowBattery { .. } => AlertKind::LowBattery,
+            AlertCondition::HighTemperature { .. } => AlertKind::HighTemperature,
+            AlertCondition::LowStarConfidence { .. } => AlertKind::LowStarConfidence,
+            AlertCondition::SensorFailure { subsystem } => AlertKind::SensorFailure(subsystem),
         }
     }
 }

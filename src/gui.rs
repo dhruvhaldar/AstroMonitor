@@ -1,5 +1,5 @@
 use crate::{
-    simulation, AlertCondition, AlertLevel, Monitor, MonitorEvent, Parser, ParserError,
+    simulation, AlertCondition, AlertKind, AlertLevel, Monitor, MonitorEvent, Parser, ParserError,
     TelemetryPacket, TelemetryPayload,
 };
 use eframe::egui;
@@ -115,7 +115,7 @@ pub struct AstroMonitorApp {
     last_alert_apply_time: Option<Instant>,
 
     // Rate Limiting
-    alert_cooldowns: HashMap<String, Instant>,
+    alert_cooldowns: HashMap<AlertKind, Instant>,
 
     // Filters
     filter_logs_important: bool,
@@ -1265,7 +1265,7 @@ impl AstroMonitorApp {
         logs: &mut VecDeque<LogEntry>,
         alerts: &mut VecDeque<AlertEntry>,
         alert_counts: &mut [usize; 3],
-        alert_cooldowns: &mut HashMap<String, Instant>,
+        alert_cooldowns: &mut HashMap<AlertKind, Instant>,
         monitor: &Monitor,
         result: Result<TelemetryPacket<'_>, ParserError>,
         index: Option<usize>,
