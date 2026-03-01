@@ -309,11 +309,14 @@ impl eframe::App for AstroMonitorApp {
             // Control Bar
             ui.horizontal(|ui| {
                 if ui
-                    .button(if self.paused {
-                        "▶ Resume"
-                    } else {
-                        "⏸ Pause"
-                    })
+                    .add_sized(
+                        [80.0, 0.0],
+                        egui::Button::new(if self.paused {
+                            "▶ Resume"
+                        } else {
+                            "⏸ Pause"
+                        }),
+                    )
                     .on_hover_ui(|ui| {
                         ui.label("Pause or resume the simulation updates. (Space)");
                     })
