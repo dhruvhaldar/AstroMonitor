@@ -142,6 +142,9 @@ impl Monitor {
         if !val.is_finite() {
             return Err("Temperature threshold must be finite");
         }
+        if val < -273.15 {
+            return Err("Temperature threshold cannot be below absolute zero");
+        }
         self.max_temp_celsius = val;
         Ok(())
     }
@@ -195,6 +198,16 @@ impl Monitor {
             }
             TelemetryPayload::Thermal(data) => {
                 if !data.temp_celsius.is_finite() {
+                    return Some(MonitorEvent {
+                        level: AlertLevel::Critical,
+                        condition: AlertCondition::SensorFailure {
+                            subsystem: "Thermal",
+                        },
+                        timestamp: packet.timestamp,
+                    });
+                }
+                // Security Check: Validate Physical Temperature Limit (Absolute Zero)
+                if data.temp_celsius < -273.15 {
                     return Some(MonitorEvent {
                         level: AlertLevel::Critical,
                         condition: AlertCondition::SensorFailure {
@@ -335,6 +348,7 @@ mod tests {
     use super::*;
     use crate::models::{
         CelestialCoordinates, PowerData, StarTrackerReading, Subsystem, TelemetryPayload,
+        ThermalData,
     };
     use std::borrow::Cow;
 
@@ -555,6 +569,32 @@ mod tests {
                 assert_eq!(subsystem, "StarTracker");
             }
             _ => panic!("Expected SensorFailure alert for invalid Dec"),
+        }
+    }
+
+    #[test]
+    fn test_monitor_invalid_temperature_security_gap() {
+        let monitor = Monitor::default();
+        let packet = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::Thermal,
+            payload: TelemetryPayload::Thermal(ThermalData {
+                temp_celsius: -300.0, // Invalid < -273.15
+            }),
+        };
+
+        let event = monitor.check(&packet);
+        assert!(event.is_some());
+        let event = event.unwrap();
+
+        // FIX VERIFIED:
+        // Temperature < -273.15 should trigger "Sensor Failure" (Critical).
+        assert_eq!(event.level, AlertLevel::Critical);
+        match event.condition {
+            AlertCondition::SensorFailure { subsystem } => {
+                assert_eq!(subsystem, "Thermal");
+            }
+            _ => panic!("Expected SensorFailure alert"),
         }
     }
 

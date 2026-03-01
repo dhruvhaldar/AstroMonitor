@@ -33,6 +33,11 @@
 **Learning:** Threshold-based logic (`value < threshold`) implicitly assumes valid input ranges. Negative values satisfy `<` checks but represent fundamental invalidity.
 **Prevention:** Enforce strict domain validation (e.g. 0.0-1.0 range) *before* applying business logic thresholds. Treat out-of-domain values as system failures, not process deviations.
 
+## 2025-05-27 - Unchecked Telemetry Temperatures (Thermal)
+**Vulnerability:** The `Monitor` logic checked that temperature values were `finite` but did not validate the physical limit of absolute zero (-273.15 °C). This allowed nonsensical temperatures (e.g., -300.0 °C) to be processed.
+**Learning:** Float validation alone is insufficient for sensor data. The physical constraints of the real-world values being represented (e.g., absolute zero) must be validated to prevent logic errors and misclassification of failures.
+**Prevention:** Implement strict domain validation for all physical quantities, ensuring values fall within physically possible limits before business logic processes them.
+
 ## 2025-05-27 - Unchecked Telemetry Coordinates (RA/Dec)
 **Vulnerability:** The `Monitor` logic checked that coordinate values were `finite` but did not validate their physical ranges (RA: 0-360, Dec: -90-+90). This allowed nonsensical values (e.g., RA=400.0) to be processed without raising a `SensorFailure`.
 **Learning:** Physical systems often have implicit constraints that are not enforced by data types (e.g., `f64` covers all real numbers). "Valid float" != "Valid coordinate".
