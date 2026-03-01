@@ -253,45 +253,47 @@ impl Monitor {
                 // Security Check: Ensure Target ID is a valid printable string (no control characters)
                 if let Some(id) = &data.target_id {
                     let mut has_control = false;
-                    let mut bytes = id.as_bytes().iter();
-                    // Bolt Optimization: Use iterator-based loop to remove bounds checking overhead.
-                    // This is ~1.5x faster for short strings than indexed access.
-                    while let Some(&b) = bytes.next() {
-                        if b < 32 || b == 127 {
-                            has_control = true;
-                            break;
-                        }
-                        // Bolt Optimization: Check for C1 control characters (U+0080..U+009F).
-                        // In UTF-8, these are encoded as 0xC2 followed by 0x80..0x9F.
-                        // Since `Parser` guarantees valid UTF-8, if we see 0xC2, it must be followed by a continuation byte.
-                        // We check if that next byte (peeked via as_slice) is in the C1 range (0x80..0x9F).
-                        // This avoids the O(N) overhead of `chars().any()` which decodes every UTF-8 character.
-                        if b == 0xC2 {
-                            if let Some(&next) = bytes.as_slice().first() {
-                                if (0x80..=0x9F).contains(&next) {
-                                    has_control = true;
-                                    break;
+
+                    // Bolt Optimization: Fast path for basic control characters.
+                    // The `any()` method is highly optimized and often vectorized by LLVM.
+                    if id.bytes().any(|b| b < 32 || b == 127) {
+                        has_control = true;
+                    } else if !id.is_ascii() {
+                        // Only check for multi-byte Unicode control characters if the string contains non-ASCII characters.
+                        let mut bytes = id.as_bytes().iter();
+                        while let Some(&b) = bytes.next() {
+                            // Bolt Optimization: Check for C1 control characters (U+0080..U+009F).
+                            // In UTF-8, these are encoded as 0xC2 followed by 0x80..0x9F.
+                            // Since `Parser` guarantees valid UTF-8, if we see 0xC2, it must be followed by a continuation byte.
+                            // We check if that next byte (peeked via as_slice) is in the C1 range (0x80..0x9F).
+                            // This avoids the O(N) overhead of `chars().any()` which decodes every UTF-8 character.
+                            if b == 0xC2 {
+                                if let Some(&next) = bytes.as_slice().first() {
+                                    if (0x80..=0x9F).contains(&next) {
+                                        has_control = true;
+                                        break;
+                                    }
                                 }
                             }
-                        }
-                        // Bolt Optimization: Check for BiDi control characters (U+202A..U+202E, U+2066..U+2069).
-                        // In UTF-8, these are encoded as:
-                        // U+202x: 0xE2 0x80 0x80..0xBF (specifically 0xE2 0x80 0xAA..0xAE for our range)
-                        // U+206x: 0xE2 0x81 0x80..0xBF (specifically 0xE2 0x81 0xA6..0xA9 for our range)
-                        if b == 0xE2 {
-                            let slice = bytes.as_slice();
-                            if slice.len() >= 2 {
-                                let b2 = slice[0];
-                                let b3 = slice[1];
-                                // Check U+202A..U+202E (0xE2 0x80 0xAA..0xAE)
-                                if b2 == 0x80 && (0xAA..=0xAE).contains(&b3) {
-                                    has_control = true;
-                                    break;
-                                }
-                                // Check U+2066..U+2069 (0xE2 0x81 0xA6..0xA9)
-                                if b2 == 0x81 && (0xA6..=0xA9).contains(&b3) {
-                                    has_control = true;
-                                    break;
+                            // Bolt Optimization: Check for BiDi control characters (U+202A..U+202E, U+2066..U+2069).
+                            // In UTF-8, these are encoded as:
+                            // U+202x: 0xE2 0x80 0x80..0xBF (specifically 0xE2 0x80 0xAA..0xAE for our range)
+                            // U+206x: 0xE2 0x81 0x80..0xBF (specifically 0xE2 0x81 0xA6..0xA9 for our range)
+                            else if b == 0xE2 {
+                                let slice = bytes.as_slice();
+                                if slice.len() >= 2 {
+                                    let b2 = slice[0];
+                                    let b3 = slice[1];
+                                    // Check U+202A..U+202E (0xE2 0x80 0xAA..0xAE)
+                                    if b2 == 0x80 && (0xAA..=0xAE).contains(&b3) {
+                                        has_control = true;
+                                        break;
+                                    }
+                                    // Check U+2066..U+2069 (0xE2 0x81 0xA6..0xA9)
+                                    if b2 == 0x81 && (0xA6..=0xA9).contains(&b3) {
+                                        has_control = true;
+                                        break;
+                                    }
                                 }
                             }
                         }
