@@ -33,3 +33,7 @@
 ## 2024-10-25 - Transient Button Layout Shifts
 **Learning:** In immediate mode GUIs like `egui`, buttons automatically resize to fit their text content. When providing transient feedback (e.g., changing "Action" to "✔ Done"), this causes layout shifts that feel janky to the user.
 **Action:** Wrap transient buttons in `ui.add_sized([width, 0.0], ...)` to enforce a fixed width wide enough to accommodate both text states.
+
+## 2024-10-25 - Button Keyboard Shortcut Discoverability
+**Learning:** In immediate mode GUIs like `egui`, burying keyboard shortcuts in button tooltips makes them undiscoverable for power users unless they intentionally hover over the action.
+**Action:** Use `.shortcut_text()` on `egui::Button` to display keyboard shortcuts directly aligned within the button UI, freeing up tooltip space for functional descriptions.

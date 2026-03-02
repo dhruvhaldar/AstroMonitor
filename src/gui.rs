@@ -406,10 +406,14 @@ impl eframe::App for AstroMonitorApp {
 
                 let progress = self.packet_index as f32 / self.packets.len() as f32;
                 // Bolt Optimization: Use cached progress text to avoid formatting/allocation every frame
-                ui.add(egui::ProgressBar::new(progress).text(&self.progress_text))
-                    .on_hover_ui(|ui| {
-                        ui.label("Simulation Progress");
-                    });
+                ui.add(
+                    egui::ProgressBar::new(progress)
+                        .text(&self.progress_text)
+                        .animate(!self.paused)
+                )
+                .on_hover_ui(|ui| {
+                    ui.label("Simulation Progress");
+                });
             });
 
             ui.separator();
@@ -999,12 +1003,15 @@ impl eframe::App for AstroMonitorApp {
             } else {
                 (
                     "Inject Packet",
-                    "Construct and process a telemetry packet with the above values (Ctrl+Enter)",
+                    "Construct and process a telemetry packet with the above values",
                 )
             };
 
             if ui
-                .add_sized([120.0, 0.0], egui::Button::new(button_text))
+                .add_sized(
+                    [120.0, 0.0],
+                    egui::Button::new(button_text).shortcut_text("Ctrl+Enter"),
+                )
                 .on_hover_ui(|ui| {
                     ui.label(button_tooltip);
                 })
