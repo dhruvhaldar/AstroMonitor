@@ -73,10 +73,8 @@ impl Parser {
 
         if verify_checksum {
             // Calculate Checksum (XOR sum of Header + Payload + ChecksumByte should be 0)
-            let mut checksum = 0u8;
-            for &byte in &data[..total_packet_len] {
-                checksum ^= byte;
-            }
+            // Bolt Optimization: Use iterator fold for better autovectorization
+            let checksum = data[..total_packet_len].iter().fold(0u8, |acc, &x| acc ^ x);
 
             if checksum != 0 {
                 return Err(ParserError::ChecksumMismatch);
@@ -204,11 +202,8 @@ mod tests {
     use super::*;
 
     fn calculate_checksum(data: &[u8]) -> u8 {
-        let mut checksum = 0;
-        for &byte in data {
-            checksum ^= byte;
-        }
-        checksum
+        // Bolt Optimization: Use iterator fold for better autovectorization
+        data.iter().fold(0, |acc, &x| acc ^ x)
     }
 
     #[test]
