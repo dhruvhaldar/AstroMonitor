@@ -315,10 +315,11 @@ impl eframe::App for AstroMonitorApp {
                             "▶ Resume"
                         } else {
                             "⏸ Pause"
-                        }),
+                        })
+                        .shortcut_text("Space"),
                     )
                     .on_hover_ui(|ui| {
-                        ui.label("Pause or resume the simulation updates. (Space)");
+                        ui.label("Pause or resume the simulation updates.");
                     })
                     .clicked()
                 {
