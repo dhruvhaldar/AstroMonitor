@@ -234,7 +234,10 @@ impl eframe::App for AstroMonitorApp {
                 self.last_update += delay; // Catch up without drift
                 steps += 1;
             }
-            self.update_progress_text();
+            // Bolt Optimization: Only format the string if a simulation step actually occurred
+            if steps > 0 {
+                self.update_progress_text();
+            }
 
             // If we hit the limit, reset to avoid backlog
             if steps >= max_steps {
