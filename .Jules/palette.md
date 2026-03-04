@@ -37,3 +37,7 @@
 ## 2024-10-25 - Button Keyboard Shortcut Discoverability
 **Learning:** In immediate mode GUIs like `egui`, burying keyboard shortcuts in button tooltips makes them undiscoverable for power users unless they intentionally hover over the action.
 **Action:** Use `.shortcut_text()` on `egui::Button` to display keyboard shortcuts directly aligned within the button UI, freeing up tooltip space for functional descriptions.
+
+## 2024-10-25 - Validation-Driven Disabled States
+**Learning:** Users shouldn't be able to submit forms or actions when inputs are in an invalid state (like exceeding byte limits), even if the backend/protocol logic handles it gracefully (e.g. via truncation). Silent truncation leads to poor user experience because the user is not explicitly told their input was changed.
+**Action:** Disable submission buttons when inputs are invalid, and provide clear tooltips (e.g., `.on_disabled_hover_text()`) explaining why the action is disabled.

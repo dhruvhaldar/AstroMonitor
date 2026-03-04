@@ -1010,16 +1010,33 @@ impl eframe::App for AstroMonitorApp {
                 )
             };
 
-            if ui
-                .add_sized(
+            let is_input_valid = match self.input_subsystem {
+                InputSubsystem::StarTracker => self.input_target.len() <= 255,
+                _ => true,
+            };
+
+            let mut inject_clicked = false;
+            ui.add_enabled_ui(is_input_valid, |ui| {
+                let mut btn_response = ui.add_sized(
                     [120.0, 0.0],
                     egui::Button::new(button_text).shortcut_text("Ctrl+Enter"),
-                )
-                .on_hover_ui(|ui| {
-                    ui.label(button_tooltip);
-                })
-                .clicked()
-                || (ui.input(|i| i.modifiers.command && i.key_pressed(egui::Key::Enter)))
+                );
+
+                if is_input_valid {
+                    btn_response = btn_response.on_hover_ui(|ui| {
+                        ui.label(button_tooltip);
+                    });
+                } else {
+                    btn_response = btn_response.on_disabled_hover_text(
+                        "Cannot inject: Target ID exceeds the 255 byte protocol limit.",
+                    );
+                }
+
+                inject_clicked = btn_response.clicked();
+            });
+
+            if inject_clicked
+                || (is_input_valid && ui.input(|i| i.modifiers.command && i.key_pressed(egui::Key::Enter)))
             {
                 let packet = self.create_manual_packet();
                 let result = Parser::parse(&packet);
