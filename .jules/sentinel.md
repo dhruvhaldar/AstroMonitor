@@ -47,3 +47,8 @@
 **Vulnerability:** The `Monitor` struct exposed public fields for thresholds (e.g., `min_battery_level`). If set to `NaN` (accidentally or maliciously), the alert logic `value < NaN` always evaluates to false, silently disabling critical alerts.
 **Learning:** Publicly mutable configuration structs bypass invariants. Type safety alone (`f64`) is insufficient to guarantee valid configuration state.
 **Prevention:** Encapsulate configuration fields as private members. Use constructor and setter methods that enforce validation logic (e.g., reject `NaN` / `Inf`) to ensure the system is always in a valid, safe state.
+
+## 2025-05-24 - CSV Injection Bypass via Control Characters
+**Vulnerability:** The CSV injection sanitization logic used `trim_start()` before checking for formula characters (`=`, `+`, `-`, `@`). However, `trim_start()` only removes Unicode whitespace, allowing attackers to bypass the filter by prepending invisible control characters (like `\x08` Backspace) or zero-width spaces (`\u{200B}`). Spreadsheets often ignore these characters when executing formulas.
+**Learning:** When sanitizing input for CSV export, removing only standard whitespace is insufficient to prevent formula execution bypasses. Invisible characters and control characters must also be trimmed before checking for formula triggers.
+**Prevention:** Use `trim_start_matches(|c: char| c.is_whitespace() || c.is_control() || c == '\u{200B}' || c == '\u{FEFF}')` to strip all invisible or control characters before verifying if the string starts with a formula character.
