@@ -1232,8 +1232,10 @@ impl AstroMonitorApp {
                         .trim_start_matches(|c: char| {
                             c.is_whitespace()
                                 || c.is_control()
-                                || c == '\u{200B}'
                                 || c == '\u{FEFF}'
+                                || ('\u{200B}'..='\u{200F}').contains(&c)
+                                || ('\u{202A}'..='\u{202E}').contains(&c)
+                                || ('\u{2066}'..='\u{2069}').contains(&c)
                         })
                         .starts_with(&['=', '+', '-', '@'][..])
                     {
@@ -1918,6 +1920,36 @@ mod security_tests {
             log_output_with_control.contains("ID:'\\u{8}\\u{200b}=cmd"),
             "CSV Injection Vulnerability: Output '{}' should contain escaped formula with leading control characters (ID:'\\u{{8}}\\u{{200b}}=cmd)",
             log_output_with_control
+        );
+
+        // Construct a packet with leading BiDi control characters before a malicious CSV payload
+        let malicious_id_with_bidi = "\u{202A}\u{202E}\u{2066}=cmd|' /C calc'!A0";
+        let packet_with_bidi = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::StarTracker,
+            payload: TelemetryPayload::StarTracker(StarTrackerReading {
+                target_id: Some(Cow::Borrowed(malicious_id_with_bidi)),
+                coordinates: CelestialCoordinates {
+                    right_ascension: 0.0,
+                    declination: 0.0,
+                },
+                confidence: 1.0,
+            }),
+        };
+
+        let mut log_output_with_bidi = String::new();
+        AstroMonitorApp::format_log_packet(
+            &mut log_output_with_bidi,
+            packet_with_bidi.timestamp,
+            Some(1),
+            &packet_with_bidi.payload,
+        );
+
+        // Assert that the formula with leading BiDi characters is ESCAPED by prepending a quote
+        assert!(
+            log_output_with_bidi.contains("ID:'\\u{202a}\\u{202e}\\u{2066}=cmd"),
+            "CSV Injection Vulnerability: Output '{}' should contain escaped formula with leading BiDi characters",
+            log_output_with_bidi
         );
     }
 }
