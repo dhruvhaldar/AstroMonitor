@@ -894,11 +894,41 @@ impl eframe::App for AstroMonitorApp {
                         .on_hover_ui(|ui| {
                             ui.label("Sensor Temperature (°C)");
                         });
+
+                        // Palette UX Enhancement: Visual Temperature Bar
+                        // Normalize between typical bounds for visualization (-100 to max+50)
+                        let max = self.monitor.max_temp_celsius();
+                        let min_bound = -100.0;
+                        let max_bound = max + 50.0;
+                        let range = max_bound - min_bound;
+                        let temp_pct =
+                            ((self.input_temp - min_bound) / range).clamp(0.0, 1.0) as f32;
+
+                        let temp_color = if self.input_temp < -273.15 {
+                            egui::Color32::RED
+                        } else if self.input_temp > max {
+                            egui::Color32::YELLOW
+                        } else {
+                            egui::Color32::GREEN
+                        };
+
+                        ui.add(
+                            egui::ProgressBar::new(temp_pct)
+                                .fill(temp_color)
+                                .desired_width(100.0),
+                        )
+                        .on_hover_text("Visual indicator of thermal health");
+
                         if self.input_temp > self.monitor.max_temp_celsius() {
                             // Bolt Optimization: Use colored_label to avoid RichText allocation
                             ui.colored_label(egui::Color32::YELLOW, "⚠")
                                 .on_hover_ui(|ui| {
                                     ui.label(&self.cached_temp_tooltip);
+                                });
+                        } else if self.input_temp < -273.15 {
+                            ui.colored_label(egui::Color32::RED, "⚠")
+                                .on_hover_ui(|ui| {
+                                    ui.label("Below absolute zero!");
                                 });
                         }
                     });
