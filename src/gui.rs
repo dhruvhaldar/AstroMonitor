@@ -1014,7 +1014,14 @@ impl eframe::App for AstroMonitorApp {
                             });
 
                         // Palette UX Enhancement: Inline Security Warning
-                        if self.input_target.trim_start_matches(|c: char| c.is_whitespace() || c.is_control() || c == '\u{200B}' || c == '\u{FEFF}').starts_with(&['=', '+', '-', '@'][..]) {
+                        if self.input_target.trim_start_matches(|c: char| {
+                            c.is_whitespace()
+                                || c.is_control()
+                                || c == '\u{FEFF}'
+                                || ('\u{200B}'..='\u{200F}').contains(&c)
+                                || ('\u{202A}'..='\u{202E}').contains(&c)
+                                || ('\u{2066}'..='\u{2069}').contains(&c)
+                        }).starts_with(&['=', '+', '-', '@'][..]) {
                             ui.colored_label(egui::Color32::YELLOW, "⚠")
                                 .on_hover_ui(|ui| {
                                     ui.label(
