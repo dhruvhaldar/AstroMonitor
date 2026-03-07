@@ -8,3 +8,11 @@
 ## 2024-05-15 - [Avoid Redundant String Formatting in Render Loop]
 **Learning:** Operations placed outside of state-changing conditionals in a GUI `update` loop will execute every single frame. Even if these operations reuse buffers and don't allocate memory on the heap (e.g. `write!`), string formatting still consumes CPU cycles for parsing and character writing. Performing this work 60 times a second for static data is a redundant computation bottleneck.
 **Action:** Ensure that string formatting operations that depend on simulation state are guarded by a check to verify that the state actually mutated during the current frame (e.g. `if steps > 0`), completely eliminating redundant computations.
+
+## 2024-05-18 - [Beware of Semantics When Removing Bounds Checks]
+**Learning:** Removing explicit `.is_finite()` checks on floating point values before range checks (like `.contains()`) changes the semantics of error reporting. While `.contains()` intrinsically evaluates to `false` for `NaN` and `Inf`, omitting `.is_finite()` causes these specific error states to fall through to invalid threshold alerts rather than triggering the proper `SensorFailure` condition.
+**Action:** Always verify that a "redundant" check does not map to a distinct, required code path or error condition before removing it. Do not prioritize minor performance gains if they break established error handling logic.
+
+## 2024-05-18 - [Cache Instant::now() Outside Simulation Loops]
+**Learning:** Inside a fixed-timestep `while` loop designed to process backlogged simulation steps, calling `Instant::elapsed()` inside the loop condition causes repeated syscalls to `Instant::now()` on every iteration. This adds overhead and can contribute to a "spiral of death" where processing the loop takes enough time to trigger even more iterations.
+**Action:** Cache `Instant::now()` immediately *before* the loop starts and use `.saturating_duration_since()` to accurately process the accumulated time backlog without continuously querying the system clock.
