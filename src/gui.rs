@@ -209,7 +209,9 @@ impl eframe::App for AstroMonitorApp {
             let max_steps = 10; // Bolt Optimization: Prevent freeze/spiral of death
 
             // Bolt Optimization: Fixed timestep loop to decouple simulation speed from frame rate
-            while self.last_update.elapsed() >= delay
+            // Bolt Optimization: Cache Instant::now() outside the loop to prevent repeated syscalls
+            let now = Instant::now();
+            while now.saturating_duration_since(self.last_update) >= delay
                 && self.packet_index < self.packets.len()
                 && steps < max_steps
             {
@@ -246,7 +248,9 @@ impl eframe::App for AstroMonitorApp {
 
             // Bolt Optimization: Prevent busy loop by scheduling repaint only when needed
             // Calculate time until next packet should be processed
-            let time_to_next = delay.saturating_sub(self.last_update.elapsed());
+            let current_now = if steps > 0 { Instant::now() } else { now };
+            let time_to_next =
+                delay.saturating_sub(current_now.saturating_duration_since(self.last_update));
             ctx.request_repaint_after(time_to_next);
         }
 
