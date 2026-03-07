@@ -623,7 +623,15 @@ impl eframe::App for AstroMonitorApp {
                                     // Ensure fixed height by disabling wrap/truncating
                                     ui.add(egui::Label::new(text.as_ref()).truncate())
                                         .on_hover_ui(|ui| {
-                                            ui.label(text);
+                                            ui.label(text.as_ref());
+                                            ui.separator();
+                                            ui.label(egui::RichText::new("Right-click to copy").weak().italics());
+                                        })
+                                        .context_menu(|ui| {
+                                            if ui.button("📋 Copy Log").clicked() {
+                                                ui.output_mut(|o| o.copied_text = text.as_ref().to_string());
+                                                ui.close_menu();
+                                            }
                                         });
                                 }
                             });
@@ -746,6 +754,14 @@ impl eframe::App for AstroMonitorApp {
                                     ui.add(egui::Label::new(egui::RichText::new(&entry.text).color(color)).truncate())
                                         .on_hover_ui(|ui| {
                                             Self::render_alert_tooltip(ui, &entry.event);
+                                            ui.separator();
+                                            ui.label(egui::RichText::new("Right-click to copy").weak().italics());
+                                        })
+                                        .context_menu(|ui| {
+                                            if ui.button("📋 Copy Alert").clicked() {
+                                                ui.output_mut(|o| o.copied_text = entry.text.clone());
+                                                ui.close_menu();
+                                            }
                                         });
                                 }
                             });

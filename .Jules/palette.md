@@ -41,3 +41,7 @@
 ## 2024-10-25 - Validation-Driven Disabled States
 **Learning:** Users shouldn't be able to submit forms or actions when inputs are in an invalid state (like exceeding byte limits), even if the backend/protocol logic handles it gracefully (e.g. via truncation). Silent truncation leads to poor user experience because the user is not explicitly told their input was changed.
 **Action:** Disable submission buttons when inputs are invalid, and provide clear tooltips (e.g., `.on_disabled_hover_text()`) explaining why the action is disabled.
+
+## 2024-10-25 - Context Menus for Individual List Items
+**Learning:** For lists of items (like logs or alerts) where the user might want to interact with a specific row (e.g. copying a single log entry), a right-click context menu avoids cluttering the UI with individual buttons per row. Furthermore, a hint in the row's hover tooltip (e.g. "Right-click to copy") makes the interaction discoverable.
+**Action:** Use `.context_menu()` on list item labels alongside a descriptive tooltip hint for per-item actions.
