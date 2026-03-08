@@ -349,9 +349,9 @@ impl eframe::App for AstroMonitorApp {
                     let btn = ui.add_sized(
                         [100.0, 0.0],
                         egui::Button::new(
-                            egui::RichText::new("⚠ Confirm?").color(egui::Color32::RED),
+                            egui::RichText::new("⚠ Confirm?").color(egui::Color32::WHITE),
                         )
-                        .fill(egui::Color32::from_rgb(50, 0, 0)),
+                        .fill(egui::Color32::from_rgb(200, 40, 40)),
                     );
                     if btn
                         .on_hover_ui(|ui| {
@@ -479,9 +479,9 @@ impl eframe::App for AstroMonitorApp {
                             let btn = if confirm_mode {
                                 ui.add(
                                     egui::Button::new(
-                                        egui::RichText::new(clear_icon).color(egui::Color32::RED),
+                                        egui::RichText::new(clear_icon).color(egui::Color32::WHITE),
                                     )
-                                    .fill(egui::Color32::from_rgb(50, 0, 0)),
+                                    .fill(egui::Color32::from_rgb(200, 40, 40)),
                                 )
                             } else {
                                 ui.add_enabled(!self.logs.is_empty(), egui::Button::new(clear_icon))
@@ -582,6 +582,13 @@ impl eframe::App for AstroMonitorApp {
                             ui.label(
                                 egui::RichText::new("Telemetry events will appear here").weak(),
                             );
+                            if self.paused {
+                                ui.add_space(10.0);
+                                if ui.button("▶ Resume Simulation").clicked() {
+                                    self.paused = false;
+                                    self.last_update = Instant::now();
+                                }
+                            }
                         });
                     } else if count == 0 && self.filter_logs_important {
                         ui.vertical_centered(|ui| {
@@ -656,9 +663,9 @@ impl eframe::App for AstroMonitorApp {
                             let btn = if confirm_mode {
                                 ui.add(
                                     egui::Button::new(
-                                        egui::RichText::new(clear_icon).color(egui::Color32::RED),
+                                        egui::RichText::new(clear_icon).color(egui::Color32::WHITE),
                                     )
-                                    .fill(egui::Color32::from_rgb(50, 0, 0)),
+                                    .fill(egui::Color32::from_rgb(200, 40, 40)),
                                 )
                             } else {
                                 ui.add_enabled(!self.alerts.is_empty(), egui::Button::new(clear_icon))

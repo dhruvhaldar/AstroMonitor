@@ -45,3 +45,7 @@
 ## 2024-10-25 - Context Menus for Individual List Items
 **Learning:** For lists of items (like logs or alerts) where the user might want to interact with a specific row (e.g. copying a single log entry), a right-click context menu avoids cluttering the UI with individual buttons per row. Furthermore, a hint in the row's hover tooltip (e.g. "Right-click to copy") makes the interaction discoverable.
 **Action:** Use `.context_menu()` on list item labels alongside a descriptive tooltip hint for per-item actions.
+
+## 2024-10-25 - Destructive Button Contrast
+**Learning:** Using red text on a dark red background for destructive "Confirm" buttons results in a severe WCAG contrast violation, making the text unreadable for visually impaired users.
+**Action:** Always use white text (`Color32::WHITE`) on a prominent red background (`Color32::from_rgb(200, 40, 40)`) for critical, destructive confirmation buttons to ensure accessibility and clear signaling.
