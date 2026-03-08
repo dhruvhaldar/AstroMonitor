@@ -288,25 +288,42 @@ impl Monitor {
                                     }
                                 }
                             }
-                            // Bolt Optimization: Check for BiDi control characters (U+202A..U+202E, U+2066..U+2069).
+                            // Bolt Optimization: Check for BiDi control characters (U+202A..U+202E, U+2066..U+2069)
+                            // and Zero-Width characters (U+200B..U+200F).
                             // In UTF-8, these are encoded as:
-                            // U+202x: 0xE2 0x80 0x80..0xBF (specifically 0xE2 0x80 0xAA..0xAE for our range)
-                            // U+206x: 0xE2 0x81 0x80..0xBF (specifically 0xE2 0x81 0xA6..0xA9 for our range)
+                            // U+200x: 0xE2 0x80 0x8B..0x8F
+                            // U+202x: 0xE2 0x80 0xAA..0xAE
+                            // U+206x: 0xE2 0x81 0xA6..0xA9
                             else if b == 0xE2 {
                                 let slice = bytes.as_slice();
                                 if slice.len() >= 2 {
                                     let b2 = slice[0];
                                     let b3 = slice[1];
-                                    // Check U+202A..U+202E (0xE2 0x80 0xAA..0xAE)
-                                    if b2 == 0x80 && (0xAA..=0xAE).contains(&b3) {
-                                        has_control = true;
-                                        break;
+                                    if b2 == 0x80 {
+                                        // Check U+200B..U+200F (0xE2 0x80 0x8B..0x8F)
+                                        if (0x8B..=0x8F).contains(&b3) {
+                                            has_control = true;
+                                            break;
+                                        }
+                                        // Check U+202A..U+202E (0xE2 0x80 0xAA..0xAE)
+                                        if (0xAA..=0xAE).contains(&b3) {
+                                            has_control = true;
+                                            break;
+                                        }
                                     }
                                     // Check U+2066..U+2069 (0xE2 0x81 0xA6..0xA9)
                                     if b2 == 0x81 && (0xA6..=0xA9).contains(&b3) {
                                         has_control = true;
                                         break;
                                     }
+                                }
+                            }
+                            // Check for Zero-Width No-Break Space (U+FEFF), encoded as 0xEF 0xBB 0xBF
+                            else if b == 0xEF {
+                                let slice = bytes.as_slice();
+                                if slice.len() >= 2 && slice[0] == 0xBB && slice[1] == 0xBF {
+                                    has_control = true;
+                                    break;
                                 }
                             }
                         }
@@ -689,5 +706,60 @@ mod tests {
             }
             _ => panic!("Expected SensorFailure alert"),
         }
+    }
+
+    #[test]
+    fn test_monitor_zero_width_spoofing() {
+        let monitor = Monitor::default();
+        // Zero-width characters (e.g. U+200B) can be used to bypass string matching
+        // or sanitization logic, leading to log spoofing or injection.
+        let packet = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::StarTracker,
+            payload: TelemetryPayload::StarTracker(StarTrackerReading {
+                target_id: Some(Cow::Borrowed("admin\u{200B}")),
+                coordinates: CelestialCoordinates {
+                    right_ascension: 0.0,
+                    declination: 0.0,
+                },
+                confidence: 1.0,
+            }),
+        };
+
+        let event = monitor.check(&packet);
+        assert!(
+            event.is_some(),
+            "Monitor should alert on Zero-Width Space control character U+200B"
+        );
+        let event = event.unwrap();
+        assert_eq!(event.level, AlertLevel::Critical);
+        match event.condition {
+            AlertCondition::SensorFailure { subsystem } => {
+                assert_eq!(subsystem, "StarTracker");
+            }
+            _ => panic!("Expected SensorFailure alert"),
+        }
+
+        // Also test U+FEFF (Zero Width No-Break Space)
+        let packet2 = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::StarTracker,
+            payload: TelemetryPayload::StarTracker(StarTrackerReading {
+                target_id: Some(Cow::Borrowed("admin\u{FEFF}")),
+                coordinates: CelestialCoordinates {
+                    right_ascension: 0.0,
+                    declination: 0.0,
+                },
+                confidence: 1.0,
+            }),
+        };
+
+        let event2 = monitor.check(&packet2);
+        assert!(
+            event2.is_some(),
+            "Monitor should alert on Zero Width No-Break Space U+FEFF"
+        );
+        let event2 = event2.unwrap();
+        assert_eq!(event2.level, AlertLevel::Critical);
     }
 }
