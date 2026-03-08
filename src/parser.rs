@@ -48,9 +48,8 @@ impl Parser {
         }
 
         // Timestamp (8 bytes)
-        let timestamp_bytes: [u8; 8] = data[offset..offset + 8]
-            .try_into()
-            .map_err(|_| ParserError::BufferTooShort)?;
+        // Bolt Optimization: Use `unwrap()` because we already bounds-checked `data.len() >= 11`
+        let timestamp_bytes: [u8; 8] = data[offset..offset + 8].try_into().unwrap();
         let timestamp = u64::from_be_bytes(timestamp_bytes);
         offset += 8;
 
@@ -59,9 +58,8 @@ impl Parser {
         offset += 1;
 
         // Payload Length (2 bytes)
-        let len_bytes: [u8; 2] = data[offset..offset + 2]
-            .try_into()
-            .map_err(|_| ParserError::BufferTooShort)?;
+        // Bolt Optimization: Use `unwrap()` because we already bounds-checked `data.len() >= 11`
+        let len_bytes: [u8; 2] = data[offset..offset + 2].try_into().unwrap();
         let payload_len = u16::from_be_bytes(len_bytes) as usize;
         offset += 2;
 
@@ -91,21 +89,16 @@ impl Parser {
                     return Err(ParserError::BufferTooShort);
                 }
 
-                let voltage_bytes = data[offset..offset + 8]
-                    .try_into()
-                    .map_err(|_| ParserError::BufferTooShort)?;
+                // Bolt Optimization: Use `unwrap()` because we already checked `data.len() < offset + 24`
+                let voltage_bytes = data[offset..offset + 8].try_into().unwrap();
                 let voltage = f64::from_be_bytes(voltage_bytes);
                 offset += 8;
 
-                let current_bytes = data[offset..offset + 8]
-                    .try_into()
-                    .map_err(|_| ParserError::BufferTooShort)?;
+                let current_bytes = data[offset..offset + 8].try_into().unwrap();
                 let current = f64::from_be_bytes(current_bytes);
                 offset += 8;
 
-                let battery_bytes = data[offset..offset + 8]
-                    .try_into()
-                    .map_err(|_| ParserError::BufferTooShort)?;
+                let battery_bytes = data[offset..offset + 8].try_into().unwrap();
                 let battery_level = f64::from_be_bytes(battery_bytes);
                 // offset += 8;
 
@@ -123,9 +116,8 @@ impl Parser {
                 if data.len() < offset + 8 {
                     return Err(ParserError::BufferTooShort);
                 }
-                let temp_bytes = data[offset..offset + 8]
-                    .try_into()
-                    .map_err(|_| ParserError::BufferTooShort)?;
+                // Bolt Optimization: Use `unwrap()` because we already checked `data.len() < offset + 8`
+                let temp_bytes = data[offset..offset + 8].try_into().unwrap();
                 let temp_celsius = f64::from_be_bytes(temp_bytes);
                 // offset += 8;
 
@@ -140,21 +132,16 @@ impl Parser {
                     return Err(ParserError::BufferTooShort);
                 }
 
-                let ra_bytes = data[offset..offset + 8]
-                    .try_into()
-                    .map_err(|_| ParserError::BufferTooShort)?;
+                // Bolt Optimization: Use `unwrap()` because we already checked `data.len() < offset + 25`
+                let ra_bytes = data[offset..offset + 8].try_into().unwrap();
                 let ra = f64::from_be_bytes(ra_bytes);
                 offset += 8;
 
-                let dec_bytes = data[offset..offset + 8]
-                    .try_into()
-                    .map_err(|_| ParserError::BufferTooShort)?;
+                let dec_bytes = data[offset..offset + 8].try_into().unwrap();
                 let dec = f64::from_be_bytes(dec_bytes);
                 offset += 8;
 
-                let conf_bytes = data[offset..offset + 8]
-                    .try_into()
-                    .map_err(|_| ParserError::BufferTooShort)?;
+                let conf_bytes = data[offset..offset + 8].try_into().unwrap();
                 let confidence = f64::from_be_bytes(conf_bytes);
                 offset += 8;
 
