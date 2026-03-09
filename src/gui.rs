@@ -598,6 +598,10 @@ impl eframe::App for AstroMonitorApp {
                             ui.label(
                                 egui::RichText::new("Only routine telemetry packets found").weak(),
                             );
+                            ui.add_space(10.0);
+                            if ui.button("View All Logs").clicked() {
+                                self.filter_logs_important = false;
+                            }
                         });
                     } else {
                         egui::ScrollArea::both()
