@@ -259,6 +259,8 @@ impl eframe::App for AstroMonitorApp {
             ui.horizontal(|ui| {
                 ui.heading("Astro Monitor Dashboard");
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    egui::widgets::global_theme_preference_switch(ui);
+
                     // Palette UX Enhancement: Help & Shortcuts
                     ui.add(egui::Button::new("?").frame(false))
                         .on_hover_ui(|ui| {
@@ -273,8 +275,8 @@ impl eframe::App for AstroMonitorApp {
                             });
                             ui.separator();
                             ui.label(egui::RichText::new("Tips:").strong());
-                            ui.label("• Hold Shift while dragging sliders for precision.");
-                            ui.label("• Right-click sliders to type exact values.");
+                            ui.label("• Hold Shift while dragging values for precision.");
+                            ui.label("• Double-click or select values to type exact values.");
                             ui.label("• Hover over 'System Status' for alert breakdown.");
                         });
 
