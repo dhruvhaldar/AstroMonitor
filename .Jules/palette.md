@@ -49,3 +49,7 @@
 ## 2024-10-25 - Destructive Button Contrast
 **Learning:** Using red text on a dark red background for destructive "Confirm" buttons results in a severe WCAG contrast violation, making the text unreadable for visually impaired users.
 **Action:** Always use white text (`Color32::WHITE`) on a prominent red background (`Color32::from_rgb(200, 40, 40)`) for critical, destructive confirmation buttons to ensure accessibility and clear signaling.
+
+## 2025-03-10 - Dark Mode Support
+**Learning:** Hard-coded or missing dark/light mode toggles make the application uncomfortable to use depending on the user's system preferences or environment. The egui library provides a simple built-in widget for this (`egui::widgets::global_theme_preference_switch`), but it must be explicitly placed in the UI.
+**Action:** Add a dark/light mode toggle in the top-right header for better accessibility.
