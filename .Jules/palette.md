@@ -53,3 +53,7 @@
 ## 2025-03-10 - Dark Mode Support
 **Learning:** Hard-coded or missing dark/light mode toggles make the application uncomfortable to use depending on the user's system preferences or environment. The egui library provides a simple built-in widget for this (`egui::widgets::global_theme_preference_switch`), but it must be explicitly placed in the UI.
 **Action:** Add a dark/light mode toggle in the top-right header for better accessibility.
+
+## 2025-03-10 - Disabled Tooltips
+**Learning:** `egui::Button::on_hover_ui` and similar hover functions do not trigger when the underlying widget is disabled (`ui.add_enabled(false, ...)`). This hides important explanations for why a button is disabled.
+**Action:** Use `.on_disabled_hover_text()` specifically for disabled states, keeping `.on_hover_ui()` or `.on_hover_text()` for enabled states to ensure tooltips are always visible.
