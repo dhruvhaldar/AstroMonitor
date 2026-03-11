@@ -478,7 +478,7 @@ impl eframe::App for AstroMonitorApp {
                                 ("✔", "Cleared!", false)
                             } else if self.logs.is_empty() { ("🗑", "Logs are already empty", false) } else { ("🗑", "Clear logs", false) };
 
-                            let btn = if confirm_mode {
+                            let mut btn = if confirm_mode {
                                 ui.add(
                                     egui::Button::new(
                                         egui::RichText::new(clear_icon).color(egui::Color32::WHITE),
@@ -489,12 +489,15 @@ impl eframe::App for AstroMonitorApp {
                                 ui.add_enabled(!self.logs.is_empty(), egui::Button::new(clear_icon))
                             };
 
-                            if btn
-                                .on_hover_ui(|ui| {
+                            if !self.logs.is_empty() || confirm_mode {
+                                btn = btn.on_hover_ui(|ui| {
                                     ui.label(clear_tooltip);
-                                })
-                                .clicked()
-                            {
+                                });
+                            } else {
+                                btn = btn.on_disabled_hover_text(clear_tooltip);
+                            }
+
+                            if btn.clicked() {
                                 if confirm_mode {
                                     self.logs.clear();
                                     self.logs_mutation_counter =
@@ -515,13 +518,17 @@ impl eframe::App for AstroMonitorApp {
                             {
                                 ("✔", "Copied!")
                             } else if self.logs.is_empty() { ("📋", "No logs to copy") } else { ("📋", "Copy logs to clipboard") };
-                            if ui
-                                .add_enabled(!self.logs.is_empty(), egui::Button::new(icon))
-                                .on_hover_ui(|ui| {
+
+                            let mut btn = ui.add_enabled(!self.logs.is_empty(), egui::Button::new(icon));
+                            if !self.logs.is_empty() {
+                                btn = btn.on_hover_ui(|ui| {
                                     ui.label(tooltip);
-                                })
-                                .clicked()
-                            {
+                                });
+                            } else {
+                                btn = btn.on_disabled_hover_text(tooltip);
+                            }
+
+                            if btn.clicked() {
                                 // Bolt Optimization: Pre-calculate size estimate and write to single buffer
                                 let mut all_logs = String::with_capacity(self.logs.len() * 80);
                                 for (i, log) in self.logs.iter().enumerate() {
@@ -666,7 +673,7 @@ impl eframe::App for AstroMonitorApp {
                                 ("✔", "Cleared!", false)
                             } else if self.alerts.is_empty() { ("🗑", "Alerts are already empty", false) } else { ("🗑", "Clear alerts", false) };
 
-                            let btn = if confirm_mode {
+                            let mut btn = if confirm_mode {
                                 ui.add(
                                     egui::Button::new(
                                         egui::RichText::new(clear_icon).color(egui::Color32::WHITE),
@@ -677,12 +684,15 @@ impl eframe::App for AstroMonitorApp {
                                 ui.add_enabled(!self.alerts.is_empty(), egui::Button::new(clear_icon))
                             };
 
-                            if btn
-                                .on_hover_ui(|ui| {
+                            if !self.alerts.is_empty() || confirm_mode {
+                                btn = btn.on_hover_ui(|ui| {
                                     ui.label(clear_tooltip);
-                                })
-                                .clicked()
-                            {
+                                });
+                            } else {
+                                btn = btn.on_disabled_hover_text(clear_tooltip);
+                            }
+
+                            if btn.clicked() {
                                 if confirm_mode {
                                     self.alerts.clear();
                                     self.alert_counts = [0, 0, 0];
@@ -702,13 +712,17 @@ impl eframe::App for AstroMonitorApp {
                             {
                                 ("✔", "Copied!")
                             } else if self.alerts.is_empty() { ("📋", "No alerts to copy") } else { ("📋", "Copy alerts to clipboard") };
-                            if ui
-                                .add_enabled(!self.alerts.is_empty(), egui::Button::new(icon))
-                                .on_hover_ui(|ui| {
+
+                            let mut btn = ui.add_enabled(!self.alerts.is_empty(), egui::Button::new(icon));
+                            if !self.alerts.is_empty() {
+                                btn = btn.on_hover_ui(|ui| {
                                     ui.label(tooltip);
-                                })
-                                .clicked()
-                            {
+                                });
+                            } else {
+                                btn = btn.on_disabled_hover_text(tooltip);
+                            }
+
+                            if btn.clicked() {
                                 // Bolt Optimization: Pre-calculate size and write to single buffer to avoid O(N) allocations
                                 let mut all_alerts = String::with_capacity(self.alerts.len() * 80);
                                 for (i, entry) in self.alerts.iter().enumerate() {
