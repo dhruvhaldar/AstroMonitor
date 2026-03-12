@@ -512,15 +512,27 @@ impl eframe::App for AstroMonitorApp {
                                     ui.ctx().request_repaint();
                                 }
                             }
+                            let active_logs_empty = if self.filter_logs_important {
+                                self.filtered_log_indices.is_empty()
+                            } else {
+                                self.logs.is_empty()
+                            };
+
                             let (icon, tooltip) = if let Some(_t) = self
                                 .last_log_copy_time
                                 .filter(|t| t.elapsed().as_secs() < 2)
                             {
                                 ("✔", "Copied!")
-                            } else if self.logs.is_empty() { ("📋", "No logs to copy") } else { ("📋", "Copy logs to clipboard") };
+                            } else if active_logs_empty {
+                                ("📋", "No logs to copy")
+                            } else if self.filter_logs_important {
+                                ("📋", "Copy visible logs to clipboard")
+                            } else {
+                                ("📋", "Copy logs to clipboard")
+                            };
 
-                            let mut btn = ui.add_enabled(!self.logs.is_empty(), egui::Button::new(icon));
-                            if !self.logs.is_empty() {
+                            let mut btn = ui.add_enabled(!active_logs_empty, egui::Button::new(icon));
+                            if !active_logs_empty {
                                 btn = btn.on_hover_ui(|ui| {
                                     ui.label(tooltip);
                                 });
@@ -529,12 +541,19 @@ impl eframe::App for AstroMonitorApp {
                             }
 
                             if btn.clicked() {
+                                let indices: Vec<usize> = if self.filter_logs_important {
+                                    self.filtered_log_indices.clone()
+                                } else {
+                                    (0..self.logs.len()).collect()
+                                };
+
                                 // Bolt Optimization: Pre-calculate size estimate and write to single buffer
-                                let mut all_logs = String::with_capacity(self.logs.len() * 80);
-                                for (i, log) in self.logs.iter().enumerate() {
+                                let mut all_logs = String::with_capacity(indices.len() * 80);
+                                for (i, &idx) in indices.iter().enumerate() {
                                     if i > 0 {
                                         all_logs.push('\n');
                                     }
+                                    let log = &self.logs[idx];
                                     match log {
                                         LogEntry::SimulatedPacket(idx) => {
                                             if let Some(packet_data) = self.packets.get(*idx) {
