@@ -57,3 +57,7 @@
 ## 2025-03-10 - Disabled Tooltips
 **Learning:** `egui::Button::on_hover_ui` and similar hover functions do not trigger when the underlying widget is disabled (`ui.add_enabled(false, ...)`). This hides important explanations for why a button is disabled.
 **Action:** Use `.on_disabled_hover_text()` specifically for disabled states, keeping `.on_hover_ui()` or `.on_hover_text()` for enabled states to ensure tooltips are always visible.
+
+## 2025-03-12 - WYSIWYC (What You See Is What You Copy) in Filtered Lists
+**Learning:** When users filter a list (e.g., "Important Only") and perform a bulk action like "Copy", they intuitively expect the action to apply only to the visible items. Applying the action to the entire unfiltered dataset violates this expectation and causes frustration.
+**Action:** Always ensure bulk actions (Copy, Export) respect the currently active view filters, and update tooltips to explicitly state what is being acted upon (e.g., "Copy visible logs").
