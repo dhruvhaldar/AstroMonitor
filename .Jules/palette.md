@@ -61,3 +61,7 @@
 ## 2025-03-12 - WYSIWYC (What You See Is What You Copy) in Filtered Lists
 **Learning:** When users filter a list (e.g., "Important Only") and perform a bulk action like "Copy", they intuitively expect the action to apply only to the visible items. Applying the action to the entire unfiltered dataset violates this expectation and causes frustration.
 **Action:** Always ensure bulk actions (Copy, Export) respect the currently active view filters, and update tooltips to explicitly state what is being acted upon (e.g., "Copy visible logs").
+
+## 2025-03-12 - Definitive States for Progress Indicators
+**Learning:** Displaying '0s left' when a progress bar reaches 100% feels algorithmic and unfinished.
+**Action:** Always provide a definitive text state like 'Completed' or 'Done' when a progress indicator reaches its maximum value.

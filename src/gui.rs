@@ -288,7 +288,7 @@ impl eframe::App for AstroMonitorApp {
                     } else if self.alert_counts[1] > 0 {
                         ("System Warning ⚠️", egui::Color32::YELLOW)
                     } else if self.alert_counts[0] > 0 {
-                        ("System Info ℹ", egui::Color32::LIGHT_BLUE)
+                        ("System Info ℹ️", egui::Color32::LIGHT_BLUE)
                     } else {
                         ("System Nominal 🟢", egui::Color32::GREEN)
                     };
@@ -955,7 +955,7 @@ impl eframe::App for AstroMonitorApp {
                         ui.add(
                             egui::DragValue::new(&mut self.input_temp)
                                 .speed(0.5)
-                                .suffix(" C"),
+                                .suffix(" °C"),
                         )
                         .on_hover_ui(|ui| {
                             ui.label("Sensor Temperature (°C)");
@@ -1072,7 +1072,7 @@ impl eframe::App for AstroMonitorApp {
                         ui.label(egui::RichText::new(format!("{}/{}", len, limit)).color(color))
                             .on_hover_ui(|ui| {
                                 ui.label("Protocol limit: 255 bytes.");
-                                ui.label("Input exceeding this will be truncated.");
+                                ui.label("Input exceeding this cannot be injected.");
                             });
 
                         // Palette UX Enhancement: Inline Security Warning
@@ -1184,7 +1184,13 @@ impl AstroMonitorApp {
         // Round to nearest second
         let total_seconds = (remaining_ms + 500) / 1000;
 
-        if total_seconds > 60 {
+        if current == total && total > 0 {
+            let _ = write!(
+                buffer,
+                "{}/{} ({:.0}%) - Completed",
+                current, total, percentage
+            );
+        } else if total_seconds > 60 {
             let m = total_seconds / 60;
             let s = total_seconds % 60;
             let _ = write!(
@@ -1780,7 +1786,7 @@ mod tests {
         // Case 4: Finished (1000/1000)
         // Remaining: 0s
         AstroMonitorApp::format_progress_text(&mut buffer, 1000, 1000, 1000);
-        assert_eq!(buffer, "1000/1000 (100%) - 0s left");
+        assert_eq!(buffer, "1000/1000 (100%) - Completed");
 
         // Case 5: Empty (0/0)
         AstroMonitorApp::format_progress_text(&mut buffer, 0, 0, 1000);
