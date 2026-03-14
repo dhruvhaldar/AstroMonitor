@@ -177,6 +177,14 @@ impl Monitor {
                         timestamp: packet.timestamp,
                     });
                 }
+                // Security Check: Validate Voltage and Current (non-negative)
+                if data.voltage < 0.0 || data.current < 0.0 {
+                    return Some(MonitorEvent {
+                        level: AlertLevel::Critical,
+                        condition: AlertCondition::SensorFailure { subsystem: "Power" },
+                        timestamp: packet.timestamp,
+                    });
+                }
                 // Security Check: Validate Battery Level Range (0.0 - 100.0)
                 if !(0.0..=100.0).contains(&data.battery_level) {
                     return Some(MonitorEvent {
@@ -438,6 +446,58 @@ mod tests {
         let event = event.unwrap();
         assert_eq!(event.level, AlertLevel::Critical);
         match event.condition {
+            AlertCondition::SensorFailure { subsystem } => {
+                assert_eq!(subsystem, "Power");
+            }
+            _ => panic!("Expected SensorFailure alert"),
+        }
+    }
+
+    #[test]
+    fn test_monitor_invalid_power_security_gap() {
+        let monitor = Monitor::default();
+        let packet = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::Power,
+            payload: TelemetryPayload::Power(PowerData {
+                voltage: -5.0, // Invalid negative voltage
+                current: 2.5,
+                battery_level: 50.0,
+            }),
+        };
+
+        let event = monitor.check(&packet);
+        assert!(event.is_some());
+        let event = event.unwrap();
+
+        // FIX VERIFIED:
+        // Negative voltage should trigger "Sensor Failure" (Critical).
+        assert_eq!(event.level, AlertLevel::Critical);
+        match event.condition {
+            AlertCondition::SensorFailure { subsystem } => {
+                assert_eq!(subsystem, "Power");
+            }
+            _ => panic!("Expected SensorFailure alert"),
+        }
+
+        let packet2 = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::Power,
+            payload: TelemetryPayload::Power(PowerData {
+                voltage: 28.0,
+                current: -1.5, // Invalid negative current
+                battery_level: 50.0,
+            }),
+        };
+
+        let event2 = monitor.check(&packet2);
+        assert!(event2.is_some());
+        let event2 = event2.unwrap();
+
+        // FIX VERIFIED:
+        // Negative current should trigger "Sensor Failure" (Critical).
+        assert_eq!(event2.level, AlertLevel::Critical);
+        match event2.condition {
             AlertCondition::SensorFailure { subsystem } => {
                 assert_eq!(subsystem, "Power");
             }
