@@ -769,6 +769,13 @@ impl eframe::App for AstroMonitorApp {
                                     .color(egui::Color32::GREEN),
                             );
                             ui.label(egui::RichText::new("No active alerts detected").weak());
+                            if self.paused {
+                                ui.add_space(10.0);
+                                if ui.button("▶ Resume Simulation").clicked() {
+                                    self.paused = false;
+                                    self.last_update = std::time::Instant::now();
+                                }
+                            }
                         });
                     } else {
                         egui::ScrollArea::both()
