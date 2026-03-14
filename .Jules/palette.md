@@ -65,3 +65,7 @@
 ## 2025-03-12 - Definitive States for Progress Indicators
 **Learning:** Displaying '0s left' when a progress bar reaches 100% feels algorithmic and unfinished.
 **Action:** Always provide a definitive text state like 'Completed' or 'Done' when a progress indicator reaches its maximum value.
+
+## 2025-03-14 - Empty State Call-to-Actions (CTAs)
+**Learning:** To improve UX discoverability and reduce friction, empty states (like 'No System Logs' or 'No Active Alerts') should include actionable Call-To-Action (CTA) buttons relevant to the application's context, such as a 'Resume Simulation' button when paused.
+**Action:** Add contextual CTAs to empty states where applicable to prevent users from reaching dead ends.
