@@ -52,3 +52,8 @@
 **Vulnerability:** The CSV injection sanitization logic used `trim_start()` before checking for formula characters (`=`, `+`, `-`, `@`). However, `trim_start()` only removes Unicode whitespace, allowing attackers to bypass the filter by prepending invisible control characters (like `\x08` Backspace) or zero-width spaces (`\u{200B}`). Spreadsheets often ignore these characters when executing formulas.
 **Learning:** When sanitizing input for CSV export, removing only standard whitespace is insufficient to prevent formula execution bypasses. Invisible characters and control characters must also be trimmed before checking for formula triggers.
 **Prevention:** Use `trim_start_matches(|c: char| c.is_whitespace() || c.is_control() || c == '\u{200B}' || c == '\u{FEFF}')` to strip all invisible or control characters before verifying if the string starts with a formula character.
+
+## 2025-05-27 - Unchecked Telemetry Power Readings (Voltage/Current)
+**Vulnerability:** The `Monitor` logic checked that voltage and current values were `finite` but did not validate their physical ranges (voltage: >=0, current: >=0) for typical space telemetry power buses. This allowed nonsensical negative values to be processed without raising a `SensorFailure`.
+**Learning:** Physical systems often have implicit constraints that are not enforced by data types. Negative voltage and current on systems that don't support them represent sensor failures or spoofed data.
+**Prevention:** Implement strict domain validation for all physical quantities at the ingestion layer, ensuring values fall within their defined physical limits before any business logic is applied.
