@@ -69,3 +69,7 @@
 ## 2025-03-14 - Empty State Call-to-Actions (CTAs)
 **Learning:** To improve UX discoverability and reduce friction, empty states (like 'No System Logs' or 'No Active Alerts') should include actionable Call-To-Action (CTA) buttons relevant to the application's context, such as a 'Resume Simulation' button when paused.
 **Action:** Add contextual CTAs to empty states where applicable to prevent users from reaching dead ends.
+
+## 2025-03-14 - Text-Style vs Emoji-Style Emojis
+**Learning:** In egui interfaces, some Unicode characters (like ℹ, ⚠, ✔) are treated as "text-style" and may render in black-and-white or inconsistently across different fonts and platforms.
+**Action:** Append the emoji variation selector (`\u{fe0f}`) to force colorful, "emoji-style" rendering for consistent cross-platform presentation.
