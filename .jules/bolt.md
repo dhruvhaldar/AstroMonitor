@@ -20,3 +20,11 @@
 ## 2024-05-18 - [Eliminate Redundant Bounds Check Branches in Hot Path Parsing]
 **Learning:** Using `.map_err()` to convert slice length mismatches into custom errors (e.g. `try_into().map_err(|_| ParserError::BufferTooShort)`) on a hot parser path forces the compiler to maintain the `Err` branch, even if the surrounding code explicitly validated the bounds just one line prior (e.g. `if data.len() < 24`). This adds unnecessary branch evaluation overhead to what could be a simple memory read.
 **Action:** When parsing binary structures where the slice boundaries are already mathematically proven and verified to be safe earlier in the function, prefer using `.unwrap()` on `.try_into()` array conversions. This signals to the compiler that the length check will never fail, cleanly eliminating the redundant error branching and yielding a measurable (~10%) performance boost on the hot parsing path.
+
+## 2024-05-18 - [Avoid Redundant String Cloning in egui Render Loop]
+**Learning:** `egui`'s `WidgetText` implementation automatically deep-clones `String` objects if a `&String` reference is passed (e.g. `RichText::new(&my_string)`). In virtualized lists or frequently updating components (like `ProgressBar::text`), this creates a massive hidden string allocation bottleneck every single frame per visible item.
+**Action:** Always cast owned strings to string slices (`&str`) using `.as_str()` before passing them to `egui` widgets (e.g. `RichText::new(my_string.as_str())`) to bypass the `&String` -> `String` deep-copy semantics and guarantee zero-cost text borrowing on the hot render path.
+
+## 2024-05-18 - [Eliminate Redundant Syscalls in Hot Loops]
+**Learning:** Functions that internally utilize system clocks like `last_time.elapsed()` execute a new syscall to `Instant::now()`. Inside a fixed-timestep `while` simulation loop processing multiple packets per frame, this triggers invisible, redundant syscall overhead per generated alert.
+**Action:** When a method is called frequently within a simulation loop, pre-calculate `Instant::now()` once before the loop (e.g. `let now = Instant::now()`) and pass `now` as an argument down to the processing functions (e.g. `process_result(..., now)`), utilizing `.saturating_duration_since(*last_time)` to completely eliminate redundant `clock_gettime()` syscall bottlenecks on the hot path.

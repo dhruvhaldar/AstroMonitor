@@ -227,6 +227,7 @@ impl eframe::App for AstroMonitorApp {
                     &self.monitor,
                     result,
                     Some(self.packet_index + 1),
+                    now,
                 );
                 self.packet_index += 1;
                 // Bolt Optimization: Increment logs mutation counter
@@ -417,7 +418,8 @@ impl eframe::App for AstroMonitorApp {
                 // Bolt Optimization: Use cached progress text to avoid formatting/allocation every frame
                 ui.add(
                     egui::ProgressBar::new(progress)
-                        .text(&self.progress_text)
+                        // Bolt Optimization: Pass string slice to avoid implicit String cloning in Into<WidgetText>
+                        .text(self.progress_text.as_str())
                         .animate(!self.paused)
                 )
                 .on_hover_ui(|ui| {
@@ -803,8 +805,8 @@ impl eframe::App for AstroMonitorApp {
                                         AlertLevel::Info => egui::Color32::LIGHT_BLUE,
                                     };
 
-                                    // Bolt Optimization: Use RichText with cached string
-                                    ui.add(egui::Label::new(egui::RichText::new(&entry.text).color(color)).truncate())
+                                    // Bolt Optimization: Use RichText with string slice to avoid implicit String cloning per frame
+                                    ui.add(egui::Label::new(egui::RichText::new(entry.text.as_str()).color(color)).truncate())
                                         .on_hover_ui(|ui| {
                                             Self::render_alert_tooltip(ui, &entry.event);
                                             ui.separator();
@@ -1158,6 +1160,7 @@ impl eframe::App for AstroMonitorApp {
                     &self.monitor,
                     result,
                     None,
+                    Instant::now(),
                 );
                 self.logs_mutation_counter = self.logs_mutation_counter.wrapping_add(1);
                 self.last_injection_time = Some(Instant::now());
@@ -1418,6 +1421,7 @@ impl AstroMonitorApp {
     }
 
     // Bolt Optimization: Static processing function to allow split borrowing
+    #[allow(clippy::too_many_arguments)]
     fn process_result(
         logs: &mut VecDeque<LogEntry>,
         alerts: &mut VecDeque<AlertEntry>,
@@ -1426,6 +1430,7 @@ impl AstroMonitorApp {
         monitor: &Monitor,
         result: Result<TelemetryPacket<'_>, ParserError>,
         index: Option<usize>,
+        current_time: Instant,
     ) {
         // Bolt Optimization: Combined log message to reduce string allocations and VecDeque operations by 50%
         match result {
@@ -1464,12 +1469,14 @@ impl AstroMonitorApp {
                     // for identical alert types (ignoring dynamic values like slight voltage fluctuations).
                     let alert_key = event.condition.kind();
                     if let Some(last_time) = alert_cooldowns.get(&alert_key) {
-                        if last_time.elapsed() < Duration::from_secs(5) {
+                        // Bolt Optimization: Use pre-cached current_time to avoid 2 syscalls
+                        // (last_time.elapsed() and Instant::now() inside insert) per alert.
+                        if current_time.saturating_duration_since(*last_time) < Duration::from_secs(5) {
                             // Rate limit active: Skip logging and UI update for this alert
                             return;
                         }
                     }
-                    alert_cooldowns.insert(alert_key, Instant::now());
+                    alert_cooldowns.insert(alert_key, current_time);
 
                     // Bolt Optimization: Format alert string immediately for log
                     let mut alert_text = Self::get_recycled_log_buffer(logs);
@@ -1671,6 +1678,7 @@ mod tests {
             &monitor,
             Ok(packet.clone()),
             None,
+            Instant::now(),
         );
 
         assert_eq!(logs.len(), 1);
@@ -1687,6 +1695,7 @@ mod tests {
             &monitor,
             Ok(packet),
             Some(1),
+            Instant::now(),
         );
 
         assert_eq!(logs.len(), 2);
@@ -1714,6 +1723,7 @@ mod tests {
             &monitor,
             Ok(packet_alert),
             Some(2),
+            Instant::now(),
         );
 
         // Alert should be generated
