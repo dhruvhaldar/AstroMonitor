@@ -322,9 +322,9 @@ impl eframe::App for AstroMonitorApp {
                     .add_sized(
                         [80.0, 0.0],
                         egui::Button::new(if self.paused {
-                            "▶ Resume"
+                            "▶️ Resume"
                         } else {
-                            "⏸ Pause"
+                            "⏸️ Pause"
                         }).shortcut_text("Space"),
                     )
                     .on_hover_ui(|ui| {
@@ -352,7 +352,7 @@ impl eframe::App for AstroMonitorApp {
                     let btn = ui.add_sized(
                         [100.0, 0.0],
                         egui::Button::new(
-                            egui::RichText::new("⚠ Confirm?").color(egui::Color32::WHITE),
+                            egui::RichText::new("⚠️ Confirm?").color(egui::Color32::WHITE),
                         )
                         .fill(egui::Color32::from_rgb(200, 40, 40)),
                     );
@@ -369,9 +369,9 @@ impl eframe::App for AstroMonitorApp {
                     }
                 } else {
                     if ui
-                        .add_sized([100.0, 0.0], egui::Button::new("↻ Restart"))
+                        .add_sized([100.0, 0.0], egui::Button::new("🔄 Restart"))
                         .on_hover_ui(|ui| {
-                            ui.label("⚠ Clears all logs, alerts, and restarts the simulation.");
+                            ui.label("⚠️ Clears all logs, alerts, and restarts the simulation.");
                         })
                         .clicked()
                     {
@@ -473,12 +473,12 @@ impl eframe::App for AstroMonitorApp {
                             let (clear_icon, clear_tooltip, confirm_mode) = if let Some(_t) =
                                 self.log_clear_confirm.filter(|t| t.elapsed().as_secs() < 3)
                             {
-                                ("⚠", "Click again to confirm clear logs", true)
+                                ("⚠️", "Click again to confirm clear logs", true)
                             } else if let Some(_t) =
                                 self.last_log_clear_time.filter(|t| t.elapsed().as_secs() < 2)
                             {
-                                ("✔", "Cleared!", false)
-                            } else if self.logs.is_empty() { ("🗑", "Logs are already empty", false) } else { ("🗑", "Clear logs", false) };
+                                ("✔️", "Cleared!", false)
+                            } else if self.logs.is_empty() { ("🗑️", "Logs are already empty", false) } else { ("🗑️", "Clear logs", false) };
 
                             let mut btn = if confirm_mode {
                                 ui.add(
@@ -524,13 +524,13 @@ impl eframe::App for AstroMonitorApp {
                                 .last_log_copy_time
                                 .filter(|t| t.elapsed().as_secs() < 2)
                             {
-                                ("✔", "Copied!")
+                                ("✔️", "Copied!")
                             } else if active_logs_empty {
-                                ("📋", "No logs to copy")
+                                ("📋️", "No logs to copy")
                             } else if self.filter_logs_important {
-                                ("📋", "Copy visible logs to clipboard")
+                                ("📋️", "Copy visible logs to clipboard")
                             } else {
-                                ("📋", "Copy logs to clipboard")
+                                ("📋️", "Copy logs to clipboard")
                             };
 
                             let mut btn = ui.add_enabled(!active_logs_empty, egui::Button::new(icon));
@@ -588,7 +588,7 @@ impl eframe::App for AstroMonitorApp {
                             ui.separator();
 
                             if ui
-                                .selectable_label(self.filter_logs_important, "⚠ Important Only")
+                                .selectable_label(self.filter_logs_important, "⚠️ Important Only")
                                 .on_hover_text("Show only Alerts and Messages, hiding raw telemetry packets.")
                                 .clicked()
                             {
@@ -614,7 +614,7 @@ impl eframe::App for AstroMonitorApp {
                             );
                             if self.paused {
                                 ui.add_space(10.0);
-                                if ui.button("▶ Resume Simulation").clicked() {
+                                if ui.button("▶️ Resume Simulation").clicked() {
                                     self.paused = false;
                                     self.last_update = Instant::now();
                                 }
@@ -669,7 +669,7 @@ impl eframe::App for AstroMonitorApp {
                                             ui.label(egui::RichText::new("Right-click to copy").weak().italics());
                                         })
                                         .context_menu(|ui| {
-                                            if ui.button("📋 Copy Log").clicked() {
+                                            if ui.button("📋️ Copy Log").clicked() {
                                                 ui.output_mut(|o| o.copied_text = text.as_ref().to_string());
                                                 ui.close_menu();
                                             }
@@ -687,12 +687,12 @@ impl eframe::App for AstroMonitorApp {
                             let (clear_icon, clear_tooltip, confirm_mode) = if let Some(_t) =
                                 self.alert_clear_confirm.filter(|t| t.elapsed().as_secs() < 3)
                             {
-                                ("⚠", "Click again to confirm clear alerts", true)
+                                ("⚠️", "Click again to confirm clear alerts", true)
                             } else if let Some(_t) =
                                 self.last_alert_clear_time.filter(|t| t.elapsed().as_secs() < 2)
                             {
-                                ("✔", "Cleared!", false)
-                            } else if self.alerts.is_empty() { ("🗑", "Alerts are already empty", false) } else { ("🗑", "Clear alerts", false) };
+                                ("✔️", "Cleared!", false)
+                            } else if self.alerts.is_empty() { ("🗑️", "Alerts are already empty", false) } else { ("🗑️", "Clear alerts", false) };
 
                             let mut btn = if confirm_mode {
                                 ui.add(
@@ -731,8 +731,8 @@ impl eframe::App for AstroMonitorApp {
                                 .last_alert_copy_time
                                 .filter(|t| t.elapsed().as_secs() < 2)
                             {
-                                ("✔", "Copied!")
-                            } else if self.alerts.is_empty() { ("📋", "No alerts to copy") } else { ("📋", "Copy alerts to clipboard") };
+                                ("✔️", "Copied!")
+                            } else if self.alerts.is_empty() { ("📋️", "No alerts to copy") } else { ("📋️", "Copy alerts to clipboard") };
 
                             let mut btn = ui.add_enabled(!self.alerts.is_empty(), egui::Button::new(icon));
                             if !self.alerts.is_empty() {
@@ -773,7 +773,7 @@ impl eframe::App for AstroMonitorApp {
                             ui.label(egui::RichText::new("No active alerts detected").weak());
                             if self.paused {
                                 ui.add_space(10.0);
-                                if ui.button("▶ Resume Simulation").clicked() {
+                                if ui.button("▶️ Resume Simulation").clicked() {
                                     self.paused = false;
                                     self.last_update = std::time::Instant::now();
                                 }
@@ -813,7 +813,7 @@ impl eframe::App for AstroMonitorApp {
                                             ui.label(egui::RichText::new("Right-click to copy").weak().italics());
                                         })
                                         .context_menu(|ui| {
-                                            if ui.button("📋 Copy Alert").clicked() {
+                                            if ui.button("📋️ Copy Alert").clicked() {
                                                 ui.output_mut(|o| o.copied_text = entry.text.clone());
                                                 ui.close_menu();
                                             }
@@ -859,7 +859,7 @@ impl eframe::App for AstroMonitorApp {
                     .last_nominal_apply_time
                     .filter(|t| t.elapsed().as_secs() < 1)
                 {
-                    ("✔ Restored!", "Nominal values applied")
+                    ("✔️ Restored!", "Nominal values applied")
                 } else {
                     ("Nominal 🟢", "Set inputs to safe, nominal values")
                 };
@@ -880,10 +880,10 @@ impl eframe::App for AstroMonitorApp {
                     .last_alert_apply_time
                     .filter(|t| t.elapsed().as_secs() < 1)
                 {
-                    ("✔ Triggered!", "Alert values applied")
+                    ("✔️ Triggered!", "Alert values applied")
                 } else {
                     (
-                        "Trigger Alert ⚠",
+                        "Trigger Alert ⚠️",
                         "Set inputs to values that will trigger an alert based on current thresholds",
                     )
                 };
@@ -952,7 +952,7 @@ impl eframe::App for AstroMonitorApp {
 
                         if self.input_battery < self.monitor.min_battery_level() {
                             // Bolt Optimization: Use colored_label to avoid RichText allocation
-                            ui.colored_label(egui::Color32::RED, "⚠").on_hover_ui(|ui| {
+                            ui.colored_label(egui::Color32::RED, "⚠️").on_hover_ui(|ui| {
                                 ui.label(&self.cached_battery_tooltip);
                             });
                         }
@@ -996,12 +996,12 @@ impl eframe::App for AstroMonitorApp {
 
                         if self.input_temp > self.monitor.max_temp_celsius() {
                             // Bolt Optimization: Use colored_label to avoid RichText allocation
-                            ui.colored_label(egui::Color32::YELLOW, "⚠")
+                            ui.colored_label(egui::Color32::YELLOW, "⚠️")
                                 .on_hover_ui(|ui| {
                                     ui.label(&self.cached_temp_tooltip);
                                 });
                         } else if self.input_temp < -273.15 {
-                            ui.colored_label(egui::Color32::RED, "⚠")
+                            ui.colored_label(egui::Color32::RED, "⚠️")
                                 .on_hover_ui(|ui| {
                                     ui.label("Below absolute zero!");
                                 });
@@ -1054,7 +1054,7 @@ impl eframe::App for AstroMonitorApp {
 
                         if self.input_confidence < self.monitor.min_star_confidence() {
                             // Bolt Optimization: Use colored_label to avoid RichText allocation
-                            ui.colored_label(egui::Color32::LIGHT_BLUE, "ℹ")
+                            ui.colored_label(egui::Color32::LIGHT_BLUE, "ℹ️")
                                 .on_hover_ui(|ui| {
                                     ui.label(&self.cached_star_tooltip);
                                 });
@@ -1093,7 +1093,7 @@ impl eframe::App for AstroMonitorApp {
                                 || ('\u{202A}'..='\u{202E}').contains(&c)
                                 || ('\u{2066}'..='\u{2069}').contains(&c)
                         }).starts_with(&['=', '+', '-', '@'][..]) {
-                            ui.colored_label(egui::Color32::YELLOW, "⚠")
+                            ui.colored_label(egui::Color32::YELLOW, "⚠️")
                                 .on_hover_ui(|ui| {
                                     ui.label(
                                         egui::RichText::new("Sanitization Active")
@@ -1114,7 +1114,7 @@ impl eframe::App for AstroMonitorApp {
                 .last_injection_time
                 .filter(|t| t.elapsed().as_secs() < 2)
             {
-                ("✔ Sent!", "Packet injected successfully")
+                ("✔️ Sent!", "Packet injected successfully")
             } else {
                 (
                     "Inject Packet",
@@ -1350,7 +1350,7 @@ impl AstroMonitorApp {
         let (color, title, icon) = match event.level {
             AlertLevel::Critical => (egui::Color32::RED, "Critical Alert", "🔴"),
             AlertLevel::Warning => (egui::Color32::YELLOW, "System Warning", "⚠️"),
-            AlertLevel::Info => (egui::Color32::LIGHT_BLUE, "System Info", "ℹ"),
+            AlertLevel::Info => (egui::Color32::LIGHT_BLUE, "System Info", "ℹ️"),
         };
 
         ui.heading(egui::RichText::new(format!("{} {}", icon, title)).color(color));
@@ -1471,7 +1471,9 @@ impl AstroMonitorApp {
                     if let Some(last_time) = alert_cooldowns.get(&alert_key) {
                         // Bolt Optimization: Use pre-cached current_time to avoid 2 syscalls
                         // (last_time.elapsed() and Instant::now() inside insert) per alert.
-                        if current_time.saturating_duration_since(*last_time) < Duration::from_secs(5) {
+                        if current_time.saturating_duration_since(*last_time)
+                            < Duration::from_secs(5)
+                        {
                             // Rate limit active: Skip logging and UI update for this alert
                             return;
                         }
