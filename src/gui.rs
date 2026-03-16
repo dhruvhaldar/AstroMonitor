@@ -202,6 +202,8 @@ impl Default for AstroMonitorApp {
 
 impl eframe::App for AstroMonitorApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Bolt Optimization: Cache Instant::now() for UI state checks to avoid 10+ syscalls per frame
+        let current_frame_time = Instant::now();
         // Simulation Logic
         if !self.paused && self.packet_index < self.packets.len() {
             let delay = Duration::from_millis(self.simulation_delay_ms);
@@ -360,7 +362,7 @@ impl eframe::App for AstroMonitorApp {
                 }
                 let restart_clicked = if let Some(_t) = self
                     .restart_confirm_time
-                    .filter(|t| t.elapsed().as_secs() < 3)
+                    .filter(|t| current_frame_time.saturating_duration_since(*t).as_secs() < 3)
                 {
                     let btn = ui.add_sized(
                         [100.0, 0.0],
@@ -484,11 +486,11 @@ impl eframe::App for AstroMonitorApp {
                         ui.heading(header_text);
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             let (clear_icon, clear_tooltip, confirm_mode) = if let Some(_t) =
-                                self.log_clear_confirm.filter(|t| t.elapsed().as_secs() < 3)
+                                self.log_clear_confirm.filter(|t| current_frame_time.saturating_duration_since(*t).as_secs() < 3)
                             {
                                 ("⚠️", "Click again to confirm clear logs", true)
                             } else if let Some(_t) =
-                                self.last_log_clear_time.filter(|t| t.elapsed().as_secs() < 2)
+                                self.last_log_clear_time.filter(|t| current_frame_time.saturating_duration_since(*t).as_secs() < 2)
                             {
                                 ("✔️", "Cleared!", false)
                             } else if self.logs.is_empty() { ("🗑️", "Logs are already empty", false) } else { ("🗑️", "Clear logs", false) };
@@ -521,7 +523,7 @@ impl eframe::App for AstroMonitorApp {
                                     self.last_log_clear_time = Some(Instant::now());
                                     ui.ctx().request_repaint_after(Duration::from_secs(2));
                                 } else if self.last_log_clear_time.is_none()
-                                    || self.last_log_clear_time.unwrap().elapsed().as_secs() >= 2
+                                    || current_frame_time.saturating_duration_since(self.last_log_clear_time.unwrap()).as_secs() >= 2
                                 {
                                     self.log_clear_confirm = Some(Instant::now());
                                     ui.ctx().request_repaint();
@@ -535,7 +537,7 @@ impl eframe::App for AstroMonitorApp {
 
                             let (icon, tooltip) = if let Some(_t) = self
                                 .last_log_copy_time
-                                .filter(|t| t.elapsed().as_secs() < 2)
+                                .filter(|t| current_frame_time.saturating_duration_since(*t).as_secs() < 2)
                             {
                                 ("✔️", "Copied!")
                             } else if active_logs_empty {
@@ -706,11 +708,11 @@ impl eframe::App for AstroMonitorApp {
                         ui.heading(format!("Active Alerts ({})", self.alerts.len()));
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             let (clear_icon, clear_tooltip, confirm_mode) = if let Some(_t) =
-                                self.alert_clear_confirm.filter(|t| t.elapsed().as_secs() < 3)
+                                self.alert_clear_confirm.filter(|t| current_frame_time.saturating_duration_since(*t).as_secs() < 3)
                             {
                                 ("⚠️", "Click again to confirm clear alerts", true)
                             } else if let Some(_t) =
-                                self.last_alert_clear_time.filter(|t| t.elapsed().as_secs() < 2)
+                                self.last_alert_clear_time.filter(|t| current_frame_time.saturating_duration_since(*t).as_secs() < 2)
                             {
                                 ("✔️", "Cleared!", false)
                             } else if self.alerts.is_empty() { ("🗑️", "Alerts are already empty", false) } else { ("🗑️", "Clear alerts", false) };
@@ -742,7 +744,7 @@ impl eframe::App for AstroMonitorApp {
                                     self.last_alert_clear_time = Some(Instant::now());
                                     ui.ctx().request_repaint_after(Duration::from_secs(2));
                                 } else if self.last_alert_clear_time.is_none()
-                                    || self.last_alert_clear_time.unwrap().elapsed().as_secs() >= 2
+                                    || current_frame_time.saturating_duration_since(self.last_alert_clear_time.unwrap()).as_secs() >= 2
                                 {
                                     self.alert_clear_confirm = Some(Instant::now());
                                     ui.ctx().request_repaint();
@@ -750,7 +752,7 @@ impl eframe::App for AstroMonitorApp {
                             }
                             let (icon, tooltip) = if let Some(_t) = self
                                 .last_alert_copy_time
-                                .filter(|t| t.elapsed().as_secs() < 2)
+                                .filter(|t| current_frame_time.saturating_duration_since(*t).as_secs() < 2)
                             {
                                 ("✔️", "Copied!")
                             } else if self.alerts.is_empty() { ("📋️", "No alerts to copy") } else { ("📋️", "Copy alerts to clipboard") };
@@ -886,7 +888,7 @@ impl eframe::App for AstroMonitorApp {
 
                 let (nom_text, nom_tooltip) = if let Some(_t) = self
                     .last_nominal_apply_time
-                    .filter(|t| t.elapsed().as_secs() < 1)
+                    .filter(|t| current_frame_time.saturating_duration_since(*t).as_secs() < 1)
                 {
                     ("✔️ Restored!", "Nominal values applied")
                 } else {
@@ -907,7 +909,7 @@ impl eframe::App for AstroMonitorApp {
 
                 let (alert_text, alert_tooltip) = if let Some(_t) = self
                     .last_alert_apply_time
-                    .filter(|t| t.elapsed().as_secs() < 1)
+                    .filter(|t| current_frame_time.saturating_duration_since(*t).as_secs() < 1)
                 {
                     ("✔️ Triggered!", "Alert values applied")
                 } else {
@@ -1141,7 +1143,7 @@ impl eframe::App for AstroMonitorApp {
 
             let (button_text, button_tooltip) = if let Some(_t) = self
                 .last_injection_time
-                .filter(|t| t.elapsed().as_secs() < 2)
+                .filter(|t| current_frame_time.saturating_duration_since(*t).as_secs() < 2)
             {
                 ("✔️ Sent!", "Packet injected successfully")
             } else {

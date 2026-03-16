@@ -28,3 +28,7 @@
 ## 2024-05-18 - [Eliminate Redundant Syscalls in Hot Loops]
 **Learning:** Functions that internally utilize system clocks like `last_time.elapsed()` execute a new syscall to `Instant::now()`. Inside a fixed-timestep `while` simulation loop processing multiple packets per frame, this triggers invisible, redundant syscall overhead per generated alert.
 **Action:** When a method is called frequently within a simulation loop, pre-calculate `Instant::now()` once before the loop (e.g. `let now = Instant::now()`) and pass `now` as an argument down to the processing functions (e.g. `process_result(..., now)`), utilizing `.saturating_duration_since(*last_time)` to completely eliminate redundant `clock_gettime()` syscall bottlenecks on the hot path.
+
+## 2024-05-18 - [Cache Instant::now() for UI Timeouts in Render Loop]
+**Learning:** Using `t.elapsed()` or calling `Instant::now()` directly inside `filter` checks for UI feedback (like "Copied!" timeouts) inside an immediate-mode `update` loop (which executes at 60 FPS) leads to numerous redundant system calls (e.g., `clock_gettime()`) per frame, wasting CPU cycles even when no interaction is occurring.
+**Action:** Always pre-calculate `let current_frame_time = Instant::now();` once at the very beginning of the frame's `update` method. Replace all internal `.elapsed()` timeout checks with `current_frame_time.saturating_duration_since(*t)`. This guarantees exactly one clock syscall per frame for all UI timing logic.
