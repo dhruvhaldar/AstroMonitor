@@ -73,3 +73,7 @@
 ## 2025-03-14 - Text-Style vs Emoji-Style Emojis
 **Learning:** In egui interfaces, some Unicode characters (like ℹ, ⚠, ✔) are treated as "text-style" and may render in black-and-white or inconsistently across different fonts and platforms.
 **Action:** Append the emoji variation selector (`\u{fe0f}`) to force colorful, "emoji-style" rendering for consistent cross-platform presentation.
+
+## 2026-03-16 - Adaptive Empty State CTAs
+**Learning:** Hardcoding a single Call-to-Action (like "Resume Simulation") in empty states can lead to nonsensical user flows if the underlying state has permanently changed (e.g., the simulation is complete, not just paused).
+**Action:** Use context-aware logic to adapt empty state CTAs to the current application phase (e.g., swapping "Resume" for "Restart").

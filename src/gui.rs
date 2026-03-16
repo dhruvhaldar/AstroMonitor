@@ -318,27 +318,40 @@ impl eframe::App for AstroMonitorApp {
 
             // Control Bar
             ui.horizontal(|ui| {
-                if ui
-                    .add_sized(
+                let simulation_active = self.packet_index < self.packets.len();
+                let mut btn_clicked = false;
+
+                ui.add_enabled_ui(simulation_active, |ui| {
+                    let mut btn = ui.add_sized(
                         [80.0, 0.0],
                         egui::Button::new(if self.paused {
                             "▶️ Resume"
                         } else {
                             "⏸️ Pause"
-                        }).shortcut_text("Space"),
-                    )
-                    .on_hover_ui(|ui| {
-                        ui.label("Pause or resume the simulation updates.");
-                    })
-                    .clicked()
-                {
+                        })
+                        .shortcut_text("Space"),
+                    );
+
+                    // Palette UX Enhancement: Disable Pause/Resume when simulation is complete
+                    if simulation_active {
+                        btn = btn.on_hover_ui(|ui| {
+                            ui.label("Pause or resume the simulation updates.");
+                        });
+                    } else {
+                        btn = btn.on_disabled_hover_text("Simulation completed. Restart to resume.");
+                    }
+
+                    btn_clicked = btn.clicked();
+                });
+
+                if btn_clicked {
                     self.paused = !self.paused;
                     if !self.paused {
                         self.last_update = Instant::now();
                     }
                 }
                 // Handle keyboard shortcut (Space to toggle pause)
-                if ui.input(|i| i.key_pressed(egui::Key::Space)) && !ui.ctx().wants_keyboard_input()
+                if ui.input(|i| i.key_pressed(egui::Key::Space)) && !ui.ctx().wants_keyboard_input() && simulation_active
                 {
                     self.paused = !self.paused;
                     if !self.paused {
@@ -612,12 +625,20 @@ impl eframe::App for AstroMonitorApp {
                             ui.label(
                                 egui::RichText::new("Telemetry events will appear here").weak(),
                             );
-                            if self.paused {
-                                ui.add_space(10.0);
-                                if ui.button("▶️ Resume Simulation").clicked() {
-                                    self.paused = false;
+                            ui.add_space(10.0);
+                            if self.packet_index >= self.packets.len() {
+                                if ui.button("🔄 Restart Simulation").clicked() {
+                                    self.packet_index = 0;
+                                    self.update_progress_text();
+                                    self.logs.clear();
+                                    self.alerts.clear();
+                                    self.alert_counts = [0, 0, 0];
                                     self.last_update = Instant::now();
+                                    self.paused = false;
                                 }
+                            } else if self.paused && ui.button("▶️ Resume Simulation").clicked() {
+                                self.paused = false;
+                                self.last_update = Instant::now();
                             }
                         });
                     } else if count == 0 && self.filter_logs_important {
@@ -771,12 +792,20 @@ impl eframe::App for AstroMonitorApp {
                                     .color(egui::Color32::GREEN),
                             );
                             ui.label(egui::RichText::new("No active alerts detected").weak());
-                            if self.paused {
-                                ui.add_space(10.0);
-                                if ui.button("▶️ Resume Simulation").clicked() {
+                            ui.add_space(10.0);
+                            if self.packet_index >= self.packets.len() {
+                                if ui.button("🔄 Restart Simulation").clicked() {
+                                    self.packet_index = 0;
+                                    self.update_progress_text();
+                                    self.logs.clear();
+                                    self.alerts.clear();
+                                    self.alert_counts = [0, 0, 0];
+                                    self.last_update = Instant::now();
                                     self.paused = false;
-                                    self.last_update = std::time::Instant::now();
                                 }
+                            } else if self.paused && ui.button("▶️ Resume Simulation").clicked() {
+                                self.paused = false;
+                                self.last_update = Instant::now();
                             }
                         });
                     } else {
