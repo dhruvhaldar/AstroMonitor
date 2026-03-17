@@ -77,3 +77,7 @@
 ## 2026-03-16 - Adaptive Empty State CTAs
 **Learning:** Hardcoding a single Call-to-Action (like "Resume Simulation") in empty states can lead to nonsensical user flows if the underlying state has permanently changed (e.g., the simulation is complete, not just paused).
 **Action:** Use context-aware logic to adapt empty state CTAs to the current application phase (e.g., swapping "Resume" for "Restart").
+
+## 2026-03-17 - Logarithmic Scales for Frequency Sliders
+**Learning:** When using a slider to control a delay that directly translates to a frequency (e.g., ms delay to Hz speed), a linear scale makes fine-tuning high speeds difficult because small movements cause large frequency jumps at the low end of the delay scale.
+**Action:** Use `.logarithmic(true)` on `egui::Slider` for inverse relationships (like delay to frequency) to provide a more uniform perceived change across the entire range.

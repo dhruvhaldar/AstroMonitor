@@ -409,6 +409,7 @@ impl eframe::App for AstroMonitorApp {
                 if ui
                     .add(
                         egui::Slider::new(&mut self.simulation_delay_ms, 100..=2000)
+                            .logarithmic(true)
                             .text(format!("Delay (ms) [{:.1} Hz]", freq)),
                     )
                     .on_hover_ui(|ui| {
