@@ -81,3 +81,7 @@
 ## 2026-03-17 - Logarithmic Scales for Frequency Sliders
 **Learning:** When using a slider to control a delay that directly translates to a frequency (e.g., ms delay to Hz speed), a linear scale makes fine-tuning high speeds difficult because small movements cause large frequency jumps at the low end of the delay scale.
 **Action:** Use `.logarithmic(true)` on `egui::Slider` for inverse relationships (like delay to frequency) to provide a more uniform perceived change across the entire range.
+
+## 2025-03-18 - Accurate ETA during Paused States
+**Learning:** Displaying a time estimate (ETA) like "3s left" while a process is paused is misleading and creates a false expectation that the process is still progressing. Users might stare at a paused progress bar waiting for it to finish.
+**Action:** When a process with an ETA is paused, replace the time estimate with a definitive "Paused" text state to accurately reflect that the system is halted.
