@@ -135,7 +135,8 @@ pub struct AstroMonitorApp {
 impl Default for AstroMonitorApp {
     fn default() -> Self {
         let packets = simulation::generate_simulated_packets();
-        let progress_text = format!("0/{}", packets.len());
+        let mut progress_text = String::new();
+        AstroMonitorApp::format_progress_text(&mut progress_text, 0, packets.len(), 1000, false);
         let monitor = Monitor::default();
 
         // Bolt Optimization: Pre-format tooltip strings to avoid allocation in render loop
@@ -351,6 +352,7 @@ impl eframe::App for AstroMonitorApp {
                     if !self.paused {
                         self.last_update = Instant::now();
                     }
+                    self.update_progress_text();
                 }
                 // Handle keyboard shortcut (Space to toggle pause)
                 if ui.input(|i| i.key_pressed(egui::Key::Space)) && !ui.ctx().wants_keyboard_input() && simulation_active
@@ -359,6 +361,7 @@ impl eframe::App for AstroMonitorApp {
                     if !self.paused {
                         self.last_update = Instant::now();
                     }
+                    self.update_progress_text();
                 }
                 let restart_clicked = if let Some(_t) = self
                     .restart_confirm_time
@@ -397,12 +400,12 @@ impl eframe::App for AstroMonitorApp {
 
                 if restart_clicked {
                     self.packet_index = 0;
+                    self.paused = false;
                     self.update_progress_text();
                     self.logs.clear();
                     self.alerts.clear();
                     self.alert_counts = [0, 0, 0];
                     self.last_update = Instant::now();
-                    self.paused = false;
                 }
                 // Palette UX Enhancement: Display frequency (Hz) alongside delay (ms)
                 let freq = 1000.0 / self.simulation_delay_ms as f64;
@@ -427,6 +430,7 @@ impl eframe::App for AstroMonitorApp {
                         self.packet_index,
                         self.packets.len(),
                         self.simulation_delay_ms,
+                        self.paused,
                     );
                 }
 
@@ -632,16 +636,17 @@ impl eframe::App for AstroMonitorApp {
                             if self.packet_index >= self.packets.len() {
                                 if ui.button("🔄 Restart Simulation").clicked() {
                                     self.packet_index = 0;
+                                    self.paused = false;
                                     self.update_progress_text();
                                     self.logs.clear();
                                     self.alerts.clear();
                                     self.alert_counts = [0, 0, 0];
                                     self.last_update = Instant::now();
-                                    self.paused = false;
                                 }
                             } else if self.paused && ui.button("▶️ Resume Simulation").clicked() {
                                 self.paused = false;
                                 self.last_update = Instant::now();
+                                self.update_progress_text();
                             }
                         });
                     } else if count == 0 && self.filter_logs_important {
@@ -799,16 +804,17 @@ impl eframe::App for AstroMonitorApp {
                             if self.packet_index >= self.packets.len() {
                                 if ui.button("🔄 Restart Simulation").clicked() {
                                     self.packet_index = 0;
+                                    self.paused = false;
                                     self.update_progress_text();
                                     self.logs.clear();
                                     self.alerts.clear();
                                     self.alert_counts = [0, 0, 0];
                                     self.last_update = Instant::now();
-                                    self.paused = false;
                                 }
                             } else if self.paused && ui.button("▶️ Resume Simulation").clicked() {
                                 self.paused = false;
                                 self.last_update = Instant::now();
+                                self.update_progress_text();
                             }
                         });
                     } else {
@@ -1209,10 +1215,17 @@ impl AstroMonitorApp {
             self.packet_index,
             self.packets.len(),
             self.simulation_delay_ms,
+            self.paused,
         );
     }
 
-    fn format_progress_text(buffer: &mut String, current: usize, total: usize, delay: u64) {
+    fn format_progress_text(
+        buffer: &mut String,
+        current: usize,
+        total: usize,
+        delay: u64,
+        paused: bool,
+    ) {
         // Bolt Optimization: Reuse the existing string buffer to avoid allocation
         buffer.clear();
         let percentage = if total > 0 {
@@ -1221,31 +1234,39 @@ impl AstroMonitorApp {
             0.0
         };
 
-        let remaining_packets = total.saturating_sub(current);
-        let remaining_ms = remaining_packets as u64 * delay;
-        // Round to nearest second
-        let total_seconds = (remaining_ms + 500) / 1000;
-
         if current == total && total > 0 {
             let _ = write!(
                 buffer,
                 "{}/{} ({:.0}%) - Completed",
                 current, total, percentage
             );
-        } else if total_seconds > 60 {
-            let m = total_seconds / 60;
-            let s = total_seconds % 60;
+        } else if paused {
             let _ = write!(
                 buffer,
-                "{}/{} ({:.0}%) - {}m {}s left",
-                current, total, percentage, m, s
+                "{}/{} ({:.0}%) - Paused",
+                current, total, percentage
             );
         } else {
-            let _ = write!(
-                buffer,
-                "{}/{} ({:.0}%) - {}s left",
-                current, total, percentage, total_seconds
-            );
+            let remaining_packets = total.saturating_sub(current);
+            let remaining_ms = remaining_packets as u64 * delay;
+            // Round to nearest second
+            let total_seconds = (remaining_ms + 500) / 1000;
+
+            if total_seconds > 60 {
+                let m = total_seconds / 60;
+                let s = total_seconds % 60;
+                let _ = write!(
+                    buffer,
+                    "{}/{} ({:.0}%) - {}m {}s left",
+                    current, total, percentage, m, s
+                );
+            } else {
+                let _ = write!(
+                    buffer,
+                    "{}/{} ({:.0}%) - {}s left",
+                    current, total, percentage, total_seconds
+                );
+            }
         }
     }
 
@@ -1821,32 +1842,36 @@ mod tests {
 
         // Case 1: Start (0/1000), 1000ms delay
         // Remaining: 1000 * 1000ms = 1000s = 16m 40s
-        AstroMonitorApp::format_progress_text(&mut buffer, 0, 1000, 1000);
+        AstroMonitorApp::format_progress_text(&mut buffer, 0, 1000, 1000, false);
         assert_eq!(buffer, "0/1000 (0%) - 16m 40s left");
 
         // Case 2: Middle (500/1000)
         // Remaining: 500 * 1000ms = 500s = 8m 20s
-        AstroMonitorApp::format_progress_text(&mut buffer, 500, 1000, 1000);
+        AstroMonitorApp::format_progress_text(&mut buffer, 500, 1000, 1000, false);
         assert_eq!(buffer, "500/1000 (50%) - 8m 20s left");
 
         // Case 3: Near End (990/1000), short time
         // Remaining: 10 * 1000ms = 10s
-        AstroMonitorApp::format_progress_text(&mut buffer, 990, 1000, 1000);
+        AstroMonitorApp::format_progress_text(&mut buffer, 990, 1000, 1000, false);
         assert_eq!(buffer, "990/1000 (99%) - 10s left");
 
         // Case 4: Finished (1000/1000)
         // Remaining: 0s
-        AstroMonitorApp::format_progress_text(&mut buffer, 1000, 1000, 1000);
+        AstroMonitorApp::format_progress_text(&mut buffer, 1000, 1000, 1000, false);
         assert_eq!(buffer, "1000/1000 (100%) - Completed");
 
         // Case 5: Empty (0/0)
-        AstroMonitorApp::format_progress_text(&mut buffer, 0, 0, 1000);
+        AstroMonitorApp::format_progress_text(&mut buffer, 0, 0, 1000, false);
         assert_eq!(buffer, "0/0 (0%) - 0s left");
 
         // Case 6: High Delay (2000ms), 90s left
         // 45 packets left * 2000ms = 90s = 1m 30s
-        AstroMonitorApp::format_progress_text(&mut buffer, 55, 100, 2000);
+        AstroMonitorApp::format_progress_text(&mut buffer, 55, 100, 2000, false);
         assert_eq!(buffer, "55/100 (55%) - 1m 30s left");
+
+        // Case 7: Paused
+        AstroMonitorApp::format_progress_text(&mut buffer, 500, 1000, 1000, true);
+        assert_eq!(buffer, "500/1000 (50%) - Paused");
     }
 
     #[test]
