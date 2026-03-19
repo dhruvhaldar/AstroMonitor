@@ -79,6 +79,18 @@ struct AlertEntry {
     text: String,
 }
 
+fn is_malicious_csv_payload(s: &str) -> bool {
+    s.trim_start_matches(|c: char| {
+        c.is_whitespace()
+            || c.is_control()
+            || c == '\u{FEFF}'
+            || ('\u{200B}'..='\u{200F}').contains(&c)
+            || ('\u{202A}'..='\u{202E}').contains(&c)
+            || ('\u{2066}'..='\u{2069}').contains(&c)
+    })
+    .starts_with(&['=', '+', '-', '@'][..])
+}
+
 pub struct AstroMonitorApp {
     monitor: Monitor,
     packets: Vec<Vec<u8>>,
@@ -1123,14 +1135,7 @@ impl eframe::App for AstroMonitorApp {
                             });
 
                         // Palette UX Enhancement: Inline Security Warning
-                        if self.input_target.trim_start_matches(|c: char| {
-                            c.is_whitespace()
-                                || c.is_control()
-                                || c == '\u{FEFF}'
-                                || ('\u{200B}'..='\u{200F}').contains(&c)
-                                || ('\u{202A}'..='\u{202E}').contains(&c)
-                                || ('\u{2066}'..='\u{2069}').contains(&c)
-                        }).starts_with(&['=', '+', '-', '@'][..]) {
+                        if is_malicious_csv_payload(&self.input_target) {
                             ui.colored_label(egui::Color32::YELLOW, "⚠️")
                                 .on_hover_ui(|ui| {
                                     ui.label(
@@ -1370,17 +1375,7 @@ impl AstroMonitorApp {
                 );
                 if let Some(id) = &d.target_id {
                     // Security Fix: Sanitize ID to prevent Log Injection AND CSV Injection
-                    let prefix = if id
-                        .trim_start_matches(|c: char| {
-                            c.is_whitespace()
-                                || c.is_control()
-                                || c == '\u{FEFF}'
-                                || ('\u{200B}'..='\u{200F}').contains(&c)
-                                || ('\u{202A}'..='\u{202E}').contains(&c)
-                                || ('\u{2066}'..='\u{2069}').contains(&c)
-                        })
-                        .starts_with(&['=', '+', '-', '@'][..])
-                    {
+                    let prefix = if is_malicious_csv_payload(id) {
                         "'"
                     } else {
                         ""
