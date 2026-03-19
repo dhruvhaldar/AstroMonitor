@@ -299,14 +299,15 @@ impl eframe::App for AstroMonitorApp {
                     ui.separator();
 
                     // Bolt Optimization: O(1) status check using cached alert counts
+                    let dark_mode = ui.visuals().dark_mode;
                     let (status_text, status_color) = if self.alert_counts[2] > 0 {
-                        ("SYSTEM CRITICAL 🔴", egui::Color32::RED)
+                        ("SYSTEM CRITICAL 🔴", Self::get_alert_color(&AlertLevel::Critical, dark_mode))
                     } else if self.alert_counts[1] > 0 {
-                        ("System Warning ⚠️", egui::Color32::YELLOW)
+                        ("System Warning ⚠️", Self::get_alert_color(&AlertLevel::Warning, dark_mode))
                     } else if self.alert_counts[0] > 0 {
-                        ("System Info ℹ️", egui::Color32::LIGHT_BLUE)
+                        ("System Info ℹ️", Self::get_alert_color(&AlertLevel::Info, dark_mode))
                     } else {
-                        ("System Nominal 🟢", egui::Color32::GREEN)
+                        ("System Nominal 🟢", Self::get_nominal_color(dark_mode))
                     };
                     ui.label(
                         egui::RichText::new(status_text)
@@ -317,15 +318,15 @@ impl eframe::App for AstroMonitorApp {
                         ui.label("Aggregate system status based on active alerts:");
                         ui.label(
                             egui::RichText::new(format!("Critical: {}", self.alert_counts[2]))
-                                .color(egui::Color32::RED),
+                                .color(Self::get_alert_color(&AlertLevel::Critical, ui.visuals().dark_mode)),
                         );
                         ui.label(
                             egui::RichText::new(format!("Warning:  {}", self.alert_counts[1]))
-                                .color(egui::Color32::YELLOW),
+                                .color(Self::get_alert_color(&AlertLevel::Warning, ui.visuals().dark_mode)),
                         );
                         ui.label(
                             egui::RichText::new(format!("Info:     {}", self.alert_counts[0]))
-                                .color(egui::Color32::LIGHT_BLUE),
+                                .color(Self::get_alert_color(&AlertLevel::Info, ui.visuals().dark_mode)),
                         );
                     });
                 });
@@ -432,7 +433,7 @@ impl eframe::App for AstroMonitorApp {
                         ui.label(
                             egui::RichText::new(format!("Frequency: {:.1} Hz", freq))
                                 .strong()
-                                .color(egui::Color32::LIGHT_BLUE),
+                                .color(Self::get_alert_color(&AlertLevel::Info, ui.visuals().dark_mode)),
                         );
                     })
                     .changed()
@@ -809,7 +810,7 @@ impl eframe::App for AstroMonitorApp {
                             ui.label(
                                 egui::RichText::new("All Systems Nominal")
                                     .heading()
-                                    .color(egui::Color32::GREEN),
+                                    .color(Self::get_nominal_color(ui.visuals().dark_mode)),
                             );
                             ui.label(egui::RichText::new("No active alerts detected").weak());
                             ui.add_space(10.0);
@@ -849,11 +850,7 @@ impl eframe::App for AstroMonitorApp {
                                     }
 
                                     let entry = &self.alerts[i];
-                                    let color = match entry.event.level {
-                                        AlertLevel::Critical => egui::Color32::RED,
-                                        AlertLevel::Warning => egui::Color32::YELLOW,
-                                        AlertLevel::Info => egui::Color32::LIGHT_BLUE,
-                                    };
+                                    let color = Self::get_alert_color(&entry.event.level, ui.visuals().dark_mode);
 
                                     // Bolt Optimization: Use RichText with string slice to avoid implicit String cloning per frame
                                     ui.add(egui::Label::new(egui::RichText::new(entry.text.as_str()).color(color)).truncate())
@@ -1136,12 +1133,13 @@ impl eframe::App for AstroMonitorApp {
 
                         // Palette UX Enhancement: Inline Security Warning
                         if is_malicious_csv_payload(&self.input_target) {
-                            ui.colored_label(egui::Color32::YELLOW, "⚠️")
+                            let warn_color = Self::get_alert_color(&AlertLevel::Warning, ui.visuals().dark_mode);
+                            ui.colored_label(warn_color, "⚠️")
                                 .on_hover_ui(|ui| {
                                     ui.label(
                                         egui::RichText::new("Sanitization Active")
                                             .strong()
-                                            .color(egui::Color32::YELLOW),
+                                            .color(warn_color),
                                     );
                                     ui.label("Input starts with a restricted character (=, +, -, @).");
                                     ui.label(
@@ -1214,6 +1212,40 @@ impl eframe::App for AstroMonitorApp {
 }
 
 impl AstroMonitorApp {
+    // Palette UX Enhancement: Dynamic Colors for Light/Dark Mode
+    fn get_alert_color(level: &AlertLevel, dark_mode: bool) -> egui::Color32 {
+        match level {
+            AlertLevel::Critical => {
+                if dark_mode {
+                    egui::Color32::RED
+                } else {
+                    egui::Color32::from_rgb(200, 0, 0)
+                }
+            }
+            AlertLevel::Warning => {
+                if dark_mode {
+                    egui::Color32::YELLOW
+                } else {
+                    egui::Color32::from_rgb(200, 140, 0)
+                }
+            }
+            AlertLevel::Info => {
+                if dark_mode {
+                    egui::Color32::LIGHT_BLUE
+                } else {
+                    egui::Color32::from_rgb(0, 100, 200)
+                }
+            }
+        }
+    }
+
+    fn get_nominal_color(dark_mode: bool) -> egui::Color32 {
+        if dark_mode {
+            egui::Color32::GREEN
+        } else {
+            egui::Color32::from_rgb(0, 120, 0)
+        }
+    }
     fn update_progress_text(&mut self) {
         Self::format_progress_text(
             &mut self.progress_text,
@@ -1395,10 +1427,12 @@ impl AstroMonitorApp {
     }
 
     fn render_alert_tooltip(ui: &mut egui::Ui, event: &MonitorEvent) {
-        let (color, title, icon) = match event.level {
-            AlertLevel::Critical => (egui::Color32::RED, "Critical Alert", "🔴"),
-            AlertLevel::Warning => (egui::Color32::YELLOW, "System Warning", "⚠️"),
-            AlertLevel::Info => (egui::Color32::LIGHT_BLUE, "System Info", "ℹ️"),
+        let dark_mode = ui.visuals().dark_mode;
+        let color = Self::get_alert_color(&event.level, dark_mode);
+        let (title, icon) = match event.level {
+            AlertLevel::Critical => ("Critical Alert", "🔴"),
+            AlertLevel::Warning => ("System Warning", "⚠️"),
+            AlertLevel::Info => ("System Info", "ℹ️"),
         };
 
         ui.heading(egui::RichText::new(format!("{} {}", icon, title)).color(color));

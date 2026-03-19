@@ -85,3 +85,7 @@
 ## 2025-03-18 - Accurate ETA during Paused States
 **Learning:** Displaying a time estimate (ETA) like "3s left" while a process is paused is misleading and creates a false expectation that the process is still progressing. Users might stare at a paused progress bar waiting for it to finish.
 **Action:** When a process with an ETA is paused, replace the time estimate with a definitive "Paused" text state to accurately reflect that the system is halted.
+
+## 2026-03-24 - Light Mode Readability of Status Colors
+**Learning:** Hardcoding bright colors like `Color32::YELLOW` or `Color32::LIGHT_BLUE` for text works well in dark themes but results in severe WCAG contrast violations (illegible text) when the user switches to light mode.
+**Action:** Always condition text colors on `ui.visuals().dark_mode` to ensure sufficient contrast in both light and dark themes.
