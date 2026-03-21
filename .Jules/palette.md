@@ -89,3 +89,7 @@
 ## 2026-03-24 - Light Mode Readability of Status Colors
 **Learning:** Hardcoding bright colors like `Color32::YELLOW` or `Color32::LIGHT_BLUE` for text works well in dark themes but results in severe WCAG contrast violations (illegible text) when the user switches to light mode.
 **Action:** Always condition text colors on `ui.visuals().dark_mode` to ensure sufficient contrast in both light and dark themes.
+
+## 2026-03-25 - Proactive Input Boundaries
+**Learning:** In `egui`, users can easily input physically impossible values (like negative voltage or sub-absolute zero temperatures) by dragging `DragValue` sliders too far. Waiting for backend logic to reject this leads to a frustrating experience.
+**Action:** Use `.range()` on `DragValue` components to restrict input to valid real-world bounds (e.g., `-273.15..=f64::MAX` for temperature) to proactively prevent invalid states.
