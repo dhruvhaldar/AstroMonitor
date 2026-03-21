@@ -84,6 +84,17 @@ struct AlertEntry {
 // When we only need to inspect the first non-ignored character, we can return early.
 // This yields a >4x speedup on normal payloads and is executed frequently in logging and GUI rendering.
 fn is_malicious_csv_payload(s: &str) -> bool {
+    // Bolt Optimization: Add a fast path for strings starting with standard ASCII alphanumeric characters.
+    // Malicious CSV payloads must begin with '=', '+', '-', or '@'.
+    // If the first byte is an alphanumeric ASCII character, it cannot be a malicious payload
+    // or a control character trying to bypass the check.
+    // This simple O(1) byte check bypasses the expensive UTF-8 `chars()` decoding loop for the vast majority of nominal inputs.
+    if let Some(&b) = s.as_bytes().first() {
+        if b.is_ascii_alphanumeric() {
+            return false;
+        }
+    }
+
     for c in s.chars() {
         if c.is_whitespace()
             || c.is_control()
