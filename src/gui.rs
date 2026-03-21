@@ -309,13 +309,13 @@ impl eframe::App for AstroMonitorApp {
                     // Bolt Optimization: O(1) status check using cached alert counts
                     let dark_mode = ui.visuals().dark_mode;
                     let (status_text, status_color) = if self.alert_counts[2] > 0 {
-                        ("SYSTEM CRITICAL 🔴", Self::get_alert_color(&AlertLevel::Critical, dark_mode))
+                        ("SYSTEM CRITICAL 🔴️", Self::get_alert_color(&AlertLevel::Critical, dark_mode))
                     } else if self.alert_counts[1] > 0 {
                         ("System Warning ⚠️", Self::get_alert_color(&AlertLevel::Warning, dark_mode))
                     } else if self.alert_counts[0] > 0 {
                         ("System Info ℹ️", Self::get_alert_color(&AlertLevel::Info, dark_mode))
                     } else {
-                        ("System Nominal 🟢", Self::get_nominal_color(dark_mode))
+                        ("System Nominal 🟢️", Self::get_nominal_color(dark_mode))
                     };
                     ui.label(
                         egui::RichText::new(status_text)
@@ -408,7 +408,7 @@ impl eframe::App for AstroMonitorApp {
                     }
                 } else {
                     if ui
-                        .add_sized([100.0, 0.0], egui::Button::new("🔄 Restart"))
+                        .add_sized([100.0, 0.0], egui::Button::new("🔄️ Restart"))
                         .on_hover_ui(|ui| {
                             ui.label("⚠️ Clears all logs, alerts, and restarts the simulation.");
                         })
@@ -648,14 +648,14 @@ impl eframe::App for AstroMonitorApp {
                     if self.logs.is_empty() {
                         ui.vertical_centered(|ui| {
                             ui.add_space(20.0);
-                            ui.label(egui::RichText::new("📄").size(24.0));
+                            ui.label(egui::RichText::new("📄️").size(24.0));
                             ui.label(egui::RichText::new("No System Logs").heading());
                             ui.label(
                                 egui::RichText::new("Telemetry events will appear here").weak(),
                             );
                             ui.add_space(10.0);
                             if self.packet_index >= self.packets.len() {
-                                if ui.button("🔄 Restart Simulation").clicked() {
+                                if ui.button("🔄️ Restart Simulation").clicked() {
                                     self.packet_index = 0;
                                     self.paused = false;
                                     self.update_progress_text();
@@ -673,7 +673,7 @@ impl eframe::App for AstroMonitorApp {
                     } else if count == 0 && self.filter_logs_important {
                         ui.vertical_centered(|ui| {
                             ui.add_space(20.0);
-                            ui.label(egui::RichText::new("🔍").size(24.0));
+                            ui.label(egui::RichText::new("🔍️").size(24.0));
                             ui.label(egui::RichText::new("No Important Logs").heading());
                             ui.label(
                                 egui::RichText::new("Only routine telemetry packets found").weak(),
@@ -814,7 +814,7 @@ impl eframe::App for AstroMonitorApp {
                     if self.alerts.is_empty() {
                         ui.vertical_centered(|ui| {
                             ui.add_space(20.0);
-                            ui.label(egui::RichText::new("✅").size(24.0));
+                            ui.label(egui::RichText::new("✅️").size(24.0));
                             ui.label(
                                 egui::RichText::new("All Systems Nominal")
                                     .heading()
@@ -823,7 +823,7 @@ impl eframe::App for AstroMonitorApp {
                             ui.label(egui::RichText::new("No active alerts detected").weak());
                             ui.add_space(10.0);
                             if self.packet_index >= self.packets.len() {
-                                if ui.button("🔄 Restart Simulation").clicked() {
+                                if ui.button("🔄️ Restart Simulation").clicked() {
                                     self.packet_index = 0;
                                     self.paused = false;
                                     self.update_progress_text();
@@ -884,14 +884,14 @@ impl eframe::App for AstroMonitorApp {
             // Manual Input Section
             ui.heading("Manual Packet Injection");
             ui.horizontal(|ui| {
-                ui.radio_value(&mut self.input_subsystem, InputSubsystem::Power, "⚡ Power")
+                ui.radio_value(&mut self.input_subsystem, InputSubsystem::Power, "⚡️ Power")
                     .on_hover_ui(|ui| {
                         ui.label("Configure Voltage, Current, and Battery parameters");
                     });
                 ui.radio_value(
                     &mut self.input_subsystem,
                     InputSubsystem::Thermal,
-                    "🌡 Thermal",
+                    "🌡️ Thermal",
                 )
                 .on_hover_ui(|ui| {
                     ui.label("Configure Temperature sensor parameters");
@@ -899,7 +899,7 @@ impl eframe::App for AstroMonitorApp {
                 ui.radio_value(
                     &mut self.input_subsystem,
                     InputSubsystem::StarTracker,
-                    "🔭 Star Tracker",
+                    "🔭️ Star Tracker",
                 )
                 .on_hover_ui(|ui| {
                     ui.label("Configure RA, Dec, Confidence, and Target identification");
@@ -916,7 +916,7 @@ impl eframe::App for AstroMonitorApp {
                 {
                     ("✔️ Restored!", "Nominal values applied")
                 } else {
-                    ("Nominal 🟢", "Set inputs to safe, nominal values")
+                    ("Nominal 🟢️", "Set inputs to safe, nominal values")
                 };
 
                 if ui
@@ -1438,7 +1438,7 @@ impl AstroMonitorApp {
         let dark_mode = ui.visuals().dark_mode;
         let color = Self::get_alert_color(&event.level, dark_mode);
         let (title, icon) = match event.level {
-            AlertLevel::Critical => ("Critical Alert", "🔴"),
+            AlertLevel::Critical => ("Critical Alert", "🔴️"),
             AlertLevel::Warning => ("System Warning", "⚠️"),
             AlertLevel::Info => ("System Info", "ℹ️"),
         };
@@ -1609,7 +1609,7 @@ impl AstroMonitorApp {
                     let m = (ts / 60) % 60;
                     let h = (ts / 3600) % 24;
                     let icon = match event.level {
-                        AlertLevel::Critical => "🔴",
+                        AlertLevel::Critical => "🔴️",
                         AlertLevel::Warning => "⚠️",
                         AlertLevel::Info => "ℹ️",
                     };
