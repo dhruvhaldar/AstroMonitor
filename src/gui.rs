@@ -974,6 +974,7 @@ impl eframe::App for AstroMonitorApp {
                         ui.add(
                             egui::DragValue::new(&mut self.input_voltage)
                                 .speed(0.1)
+                                .range(0.0..=f64::MAX)
                                 .suffix(" V"),
                         )
                         .on_hover_ui(|ui| {
@@ -983,6 +984,7 @@ impl eframe::App for AstroMonitorApp {
                         ui.add(
                             egui::DragValue::new(&mut self.input_current)
                                 .speed(0.1)
+                                .range(0.0..=f64::MAX)
                                 .suffix(" A"),
                         )
                         .on_hover_ui(|ui| {
@@ -1030,6 +1032,7 @@ impl eframe::App for AstroMonitorApp {
                         ui.add(
                             egui::DragValue::new(&mut self.input_temp)
                                 .speed(0.5)
+                                .range(-273.15..=f64::MAX)
                                 .suffix(" °C"),
                         )
                         .on_hover_ui(|ui| {
