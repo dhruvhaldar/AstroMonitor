@@ -1020,7 +1020,8 @@ impl eframe::App for AstroMonitorApp {
 
                         if self.input_battery < self.monitor.min_battery_level() {
                             // Bolt Optimization: Use colored_label to avoid RichText allocation
-                            ui.colored_label(egui::Color32::RED, "⚠️").on_hover_ui(|ui| {
+                            let color = Self::get_alert_color(&AlertLevel::Critical, ui.visuals().dark_mode);
+                            ui.colored_label(color, "⚠️").on_hover_ui(|ui| {
                                 ui.label(&self.cached_battery_tooltip);
                             });
                         }
@@ -1065,12 +1066,14 @@ impl eframe::App for AstroMonitorApp {
 
                         if self.input_temp > self.monitor.max_temp_celsius() {
                             // Bolt Optimization: Use colored_label to avoid RichText allocation
-                            ui.colored_label(egui::Color32::YELLOW, "⚠️")
+                            let color = Self::get_alert_color(&AlertLevel::Warning, ui.visuals().dark_mode);
+                            ui.colored_label(color, "⚠️")
                                 .on_hover_ui(|ui| {
                                     ui.label(&self.cached_temp_tooltip);
                                 });
                         } else if self.input_temp < -273.15 {
-                            ui.colored_label(egui::Color32::RED, "⚠️")
+                            let color = Self::get_alert_color(&AlertLevel::Critical, ui.visuals().dark_mode);
+                            ui.colored_label(color, "⚠️")
                                 .on_hover_ui(|ui| {
                                     ui.label("Below absolute zero!");
                                 });
@@ -1123,7 +1126,8 @@ impl eframe::App for AstroMonitorApp {
 
                         if self.input_confidence < self.monitor.min_star_confidence() {
                             // Bolt Optimization: Use colored_label to avoid RichText allocation
-                            ui.colored_label(egui::Color32::LIGHT_BLUE, "ℹ️")
+                            let color = Self::get_alert_color(&AlertLevel::Info, ui.visuals().dark_mode);
+                            ui.colored_label(color, "ℹ️")
                                 .on_hover_ui(|ui| {
                                     ui.label(&self.cached_star_tooltip);
                                 });
