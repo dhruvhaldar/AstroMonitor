@@ -1654,6 +1654,57 @@ impl AstroMonitorApp {
                         format_args!("Manual Packet: Error parsing: {}", e),
                     );
                 }
+
+                // Security Enhancement: Alert on Malformed/Spoofed Packets (Fuzzing Detection)
+                let alert_key = AlertKind::SensorFailure("Parser");
+                let should_alert = match alert_cooldowns.get(&alert_key) {
+                    Some(&last_time) => {
+                        current_time.saturating_duration_since(last_time).as_secs() >= 5
+                    }
+                    None => true,
+                };
+
+                if should_alert {
+                    alert_cooldowns.insert(alert_key, current_time);
+
+                    let event = MonitorEvent {
+                        level: AlertLevel::Warning,
+                        condition: AlertCondition::SensorFailure {
+                            subsystem: "Protocol Parser",
+                        },
+                        timestamp: std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or(Duration::from_secs(0))
+                            .as_secs(),
+                    };
+
+                    let mut alert_text = Self::get_recycled_log_buffer(logs);
+                    Self::format_log_alert(&mut alert_text, &event);
+                    warn!("{}", alert_text);
+
+                    logs.push_back(LogEntry::Alert(alert_text.clone()));
+
+                    if alerts.len() >= MAX_ALERTS {
+                        if let Some(old_entry) = alerts.pop_front() {
+                            let old_idx = match old_entry.event.level {
+                                AlertLevel::Info => 0,
+                                AlertLevel::Warning => 1,
+                                AlertLevel::Critical => 2,
+                            };
+                            if alert_counts[old_idx] > 0 {
+                                alert_counts[old_idx] -= 1;
+                            }
+                        }
+                    }
+
+                    alert_counts[1] += 1; // Warning
+
+                    let icon = "⚠️";
+                    alerts.push_back(AlertEntry {
+                        event,
+                        text: format!("{} [Protocol Parser] {}", icon, e),
+                    });
+                }
             }
         }
     }
