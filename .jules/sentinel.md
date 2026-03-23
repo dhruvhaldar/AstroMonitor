@@ -57,3 +57,8 @@
 **Vulnerability:** The `Monitor` logic checked that voltage and current values were `finite` but did not validate their physical ranges (voltage: >=0, current: >=0) for typical space telemetry power buses. This allowed nonsensical negative values to be processed without raising a `SensorFailure`.
 **Learning:** Physical systems often have implicit constraints that are not enforced by data types. Negative voltage and current on systems that don't support them represent sensor failures or spoofed data.
 **Prevention:** Implement strict domain validation for all physical quantities at the ingestion layer, ensuring values fall within their defined physical limits before any business logic is applied.
+
+## 2025-05-28 - CSV Injection Bypass via Tab and Carriage Return
+**Vulnerability:** The CSV injection sanitization logic checked if the payload started with `=`, `+`, `-`, or `@`. However, it missed `\t` (Tab) and `\r` (Carriage Return), which can also act as triggers or modifiers for formula injection in some spreadsheet programs (like Excel/LibreOffice), especially when leading whitespace is bypassed or ignored.
+**Learning:** Checking for standard mathematical prefixes is insufficient for comprehensive CSV injection protection. Control characters and formatting characters like tabs and carriage returns must also be explicitly included in the prefix validation check.
+**Prevention:** Extend the prefix validation list to explicitly include `\t` and `\r` (e.g., `c == '=' || c == '+' || c == '-' || c == '@' || c == '\t' || c == '\r'`) after trimming irrelevant whitespace.

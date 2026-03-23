@@ -101,10 +101,13 @@ fn is_malicious_csv_payload(s: &str) -> bool {
     // payloads padded with standard whitespace.
     for c in s.chars() {
         if c.is_ascii() {
+            if c == '=' || c == '+' || c == '-' || c == '@' || c == '\t' || c == '\r' {
+                return true;
+            }
             if c.is_whitespace() || c.is_control() {
                 continue;
             }
-            return c == '=' || c == '+' || c == '-' || c == '@';
+            return false;
         } else {
             if c == '\u{FEFF}'
                 || ('\u{200B}'..='\u{200F}').contains(&c)
@@ -2251,5 +2254,75 @@ fn test_log_filtering_logic() {
     match filtered[1] {
         LogEntry::Alert(s) => assert_eq!(s, "System Critical"),
         _ => panic!("Expected Alert"),
+    }
+}
+
+#[cfg(test)]
+mod additional_security_tests {
+    use super::*;
+    use crate::models::{CelestialCoordinates, StarTrackerReading, Subsystem, TelemetryPayload};
+    use std::borrow::Cow;
+
+    #[test]
+    fn test_csv_injection_sanitization_tab_cr() {
+        // Construct a packet with leading Tab before a malicious CSV payload
+        let malicious_id_with_tab = "\t=cmd|' /C calc'!A0";
+        let packet_with_tab = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::StarTracker,
+            payload: TelemetryPayload::StarTracker(StarTrackerReading {
+                target_id: Some(Cow::Borrowed(malicious_id_with_tab)),
+                coordinates: CelestialCoordinates {
+                    right_ascension: 0.0,
+                    declination: 0.0,
+                },
+                confidence: 1.0,
+            }),
+        };
+
+        let mut log_output_with_tab = String::new();
+        AstroMonitorApp::format_log_packet(
+            &mut log_output_with_tab,
+            packet_with_tab.timestamp,
+            Some(1),
+            &packet_with_tab.payload,
+        );
+
+        // Assert that the formula with leading Tab is ESCAPED by prepending a quote
+        assert!(
+            log_output_with_tab.contains("ID:'\\t=cmd"),
+            "CSV Injection Vulnerability: Output '{}' should contain escaped formula with leading Tab characters",
+            log_output_with_tab
+        );
+
+        // Construct a packet with leading Carriage Return before a malicious CSV payload
+        let malicious_id_with_cr = "\r=cmd|' /C calc'!A0";
+        let packet_with_cr = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::StarTracker,
+            payload: TelemetryPayload::StarTracker(StarTrackerReading {
+                target_id: Some(Cow::Borrowed(malicious_id_with_cr)),
+                coordinates: CelestialCoordinates {
+                    right_ascension: 0.0,
+                    declination: 0.0,
+                },
+                confidence: 1.0,
+            }),
+        };
+
+        let mut log_output_with_cr = String::new();
+        AstroMonitorApp::format_log_packet(
+            &mut log_output_with_cr,
+            packet_with_cr.timestamp,
+            Some(1),
+            &packet_with_cr.payload,
+        );
+
+        // Assert that the formula with leading Carriage Return is ESCAPED by prepending a quote
+        assert!(
+            log_output_with_cr.contains("ID:'\\r=cmd"),
+            "CSV Injection Vulnerability: Output '{}' should contain escaped formula with leading Carriage Return characters",
+            log_output_with_cr
+        );
     }
 }
