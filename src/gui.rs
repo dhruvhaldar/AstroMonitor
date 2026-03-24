@@ -548,14 +548,17 @@ impl eframe::App for AstroMonitorApp {
                             } else if self.logs.is_empty() { ("🗑️", "Logs are already empty", false) } else { ("🗑️", "Clear logs", false) };
 
                             let mut btn = if confirm_mode {
-                                ui.add(
+                                ui.add_sized(
+                                    [40.0, 0.0],
                                     egui::Button::new(
                                         egui::RichText::new(clear_icon).color(egui::Color32::WHITE),
                                     )
                                     .fill(egui::Color32::from_rgb(200, 40, 40)),
                                 )
                             } else {
-                                ui.add_enabled(!self.logs.is_empty(), egui::Button::new(clear_icon))
+                                ui.add_enabled_ui(!self.logs.is_empty(), |ui| {
+                                    ui.add_sized([40.0, 0.0], egui::Button::new(clear_icon))
+                                }).inner
                             };
 
                             if !self.logs.is_empty() || confirm_mode {
@@ -600,7 +603,9 @@ impl eframe::App for AstroMonitorApp {
                                 ("📋️", "Copy logs to clipboard")
                             };
 
-                            let mut btn = ui.add_enabled(!active_logs_empty, egui::Button::new(icon));
+                            let mut btn = ui.add_enabled_ui(!active_logs_empty, |ui| {
+                                ui.add_sized([40.0, 0.0], egui::Button::new(icon))
+                            }).inner;
                             if !active_logs_empty {
                                 btn = btn.on_hover_ui(|ui| {
                                     ui.label(tooltip);
@@ -771,14 +776,17 @@ impl eframe::App for AstroMonitorApp {
                             } else if self.alerts.is_empty() { ("🗑️", "Alerts are already empty", false) } else { ("🗑️", "Clear alerts", false) };
 
                             let mut btn = if confirm_mode {
-                                ui.add(
+                                ui.add_sized(
+                                    [40.0, 0.0],
                                     egui::Button::new(
                                         egui::RichText::new(clear_icon).color(egui::Color32::WHITE),
                                     )
                                     .fill(egui::Color32::from_rgb(200, 40, 40)),
                                 )
                             } else {
-                                ui.add_enabled(!self.alerts.is_empty(), egui::Button::new(clear_icon))
+                                ui.add_enabled_ui(!self.alerts.is_empty(), |ui| {
+                                    ui.add_sized([40.0, 0.0], egui::Button::new(clear_icon))
+                                }).inner
                             };
 
                             if !self.alerts.is_empty() || confirm_mode {
@@ -810,7 +818,9 @@ impl eframe::App for AstroMonitorApp {
                                 ("✔️", "Copied!")
                             } else if self.alerts.is_empty() { ("📋️", "No alerts to copy") } else { ("📋️", "Copy alerts to clipboard") };
 
-                            let mut btn = ui.add_enabled(!self.alerts.is_empty(), egui::Button::new(icon));
+                            let mut btn = ui.add_enabled_ui(!self.alerts.is_empty(), |ui| {
+                                ui.add_sized([40.0, 0.0], egui::Button::new(icon))
+                            }).inner;
                             if !self.alerts.is_empty() {
                                 btn = btn.on_hover_ui(|ui| {
                                     ui.label(tooltip);

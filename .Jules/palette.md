@@ -93,3 +93,17 @@
 ## 2026-03-25 - Proactive Input Boundaries
 **Learning:** In `egui`, users can easily input physically impossible values (like negative voltage or sub-absolute zero temperatures) by dragging `DragValue` sliders too far. Waiting for backend logic to reject this leads to a frustrating experience.
 **Action:** Use `.range()` on `DragValue` components to restrict input to valid real-world bounds (e.g., `-273.15..=f64::MAX` for temperature) to proactively prevent invalid states.
+
+
+
+## 2024-10-25 - Transient Button Layout Shifts
+**Learning:** In immediate mode GUIs like `egui`, buttons automatically resize to fit their text content. When providing transient feedback (e.g., changing "Action" to "✔ Done"), this causes layout shifts that feel janky to the user.
+**Action:** Wrap transient buttons in `ui.add_sized([width, 0.0], ...)` to enforce a fixed width wide enough to accommodate both text states. For disabled states that require tooltips, wrap it in `ui.add_enabled_ui(!is_empty, |ui| ui.add_sized(...)).inner`.
+
+## 2026-03-26 - Disabled Transient Button Tooltips
+**Learning:** `egui::Button::on_disabled_hover_text` works on buttons added via `ui.add_enabled(...)`, but does not work correctly if you need a fixed-size transient button. Using `ui.add_sized` with `ui.add_enabled` directly isn't possible because `add_enabled` takes a widget, not a response.
+**Action:** When creating fixed-width transient buttons that also need disabled states with tooltips, use `ui.add_enabled_ui(!is_empty, |ui| ui.add_sized(...)).inner` to construct the button and retrieve its `Response` for `.on_hover_ui()` and `.on_disabled_hover_text()`.
+
+## 2026-03-26 - Actionable Tooltips for Disabled States in egui
+**Learning:** `egui::Button::on_hover_ui` and similar hover functions do not trigger when the underlying widget is disabled (`ui.add_enabled(false, ...)`). This hides important explanations for why a button is disabled. However, using `.on_disabled_hover_text()` specifically for disabled states, keeping `.on_hover_ui()` or `.on_hover_text()` for enabled states to ensure tooltips are always visible is currently the recommended pattern. When the button must be constrained in size to prevent layout shifts during transient states (like changing "Action" to "✔ Done"), the button needs to be wrapped via `ui.add_enabled_ui`, returning a response that handles the button with `.inner`.
+**Action:** Use `.inner` to extract the correct `Response` from `ui.add_enabled_ui` when attaching tooltips to manually-sized buttons.
