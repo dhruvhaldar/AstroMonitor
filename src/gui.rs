@@ -674,13 +674,10 @@ impl eframe::App for AstroMonitorApp {
 
                             ui.separator();
 
-                            if ui
-                                .selectable_label(self.filter_logs_important, "⚠️ Important Only")
-                                .on_hover_text("Show only Alerts and Messages, hiding raw telemetry packets.")
-                                .clicked()
-                            {
-                                self.filter_logs_important = !self.filter_logs_important;
-                            }
+                            ui.checkbox(&mut self.filter_logs_important, "⚠️ Important Only")
+                                .on_hover_text(
+                                    "Show only Alerts and Messages, hiding raw telemetry packets.",
+                                );
                         });
                     });
 
