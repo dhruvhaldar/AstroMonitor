@@ -107,3 +107,7 @@
 ## 2026-03-26 - Actionable Tooltips for Disabled States in egui
 **Learning:** `egui::Button::on_hover_ui` and similar hover functions do not trigger when the underlying widget is disabled (`ui.add_enabled(false, ...)`). This hides important explanations for why a button is disabled. However, using `.on_disabled_hover_text()` specifically for disabled states, keeping `.on_hover_ui()` or `.on_hover_text()` for enabled states to ensure tooltips are always visible is currently the recommended pattern. When the button must be constrained in size to prevent layout shifts during transient states (like changing "Action" to "✔ Done"), the button needs to be wrapped via `ui.add_enabled_ui`, returning a response that handles the button with `.inner`.
 **Action:** Use `.inner` to extract the correct `Response` from `ui.add_enabled_ui` when attaching tooltips to manually-sized buttons.
+
+## 2026-03-27 - Checkboxes for Boolean Filters
+**Learning:** Using `selectable_label` for boolean filters (like "Important Only") can be ambiguous, as it visually resembles a tab or a tag rather than a toggleable state.
+**Action:** Always use `ui.checkbox` for boolean toggles and list filters to align with universal UX patterns and improve discoverability.
