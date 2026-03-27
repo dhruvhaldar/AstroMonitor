@@ -111,3 +111,7 @@
 ## 2026-03-27 - Checkboxes for Boolean Filters
 **Learning:** Using `selectable_label` for boolean filters (like "Important Only") can be ambiguous, as it visually resembles a tab or a tag rather than a toggleable state.
 **Action:** Always use `ui.checkbox` for boolean toggles and list filters to align with universal UX patterns and improve discoverability.
+
+## 2026-03-28 - Conflicting Visual Signals in Progress States
+**Learning:** Continuing to animate a progress bar (e.g., scrolling stripes) after it has reached 100% and textually indicates "Completed" creates a conflicting visual signal. It makes the user question if the process is actually finished or if a background task is still running.
+**Action:** Stop progress bar animations when the underlying task is complete, ensuring the visual state matches the textual "Completed" state.
