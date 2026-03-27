@@ -48,3 +48,7 @@
 ## 2026-03-23 - [Fast Path for Character Checks Over ASCII Substrings]
 **Learning:** Even when guarding complex Unicode bounds checks behind `c.is_ascii()` in a `s.chars()` loop, the `chars()` iterator still performs expensive UTF-8 decoding for every character. For standard ASCII payloads padded with whitespace, this decoding is a major overhead.
 **Action:** Replace `s.chars()` loops with `s.as_bytes().iter().enumerate()` to scan the string as raw bytes. For pure ASCII substrings, this completely bypasses UTF-8 decoding overhead. If a non-ASCII byte is found (`b >= 128`), use `s[i..].chars()` to gracefully fall back to Unicode iteration for the remainder of the string. This yields a measurable ~15% speedup for standard ASCII payloads padded with whitespace.
+
+## 2026-03-26 - [Avoid Redundant String Cloning Before Pushing to Collections]
+**Learning:** Developers often preemptively use `.clone()` when pushing formatted `String` objects into collections like `VecDeque` out of habit. If the local variable is no longer used after the insertion, this causes an entirely redundant heap allocation and string deep copy.
+**Action:** Always verify if a local string variable is actually used *after* it is pushed into a collection. If not, simply pass the string directly to move ownership, eliminating redundant `.clone()` allocations per item and significantly reducing memory churn on hot paths like alert generation.

@@ -1719,7 +1719,8 @@ impl AstroMonitorApp {
                     Self::format_log_alert(&mut alert_text, &event);
                     warn!("{}", alert_text);
 
-                    logs.push_back(LogEntry::Alert(alert_text.clone()));
+                    // Bolt Optimization: Move alert_text directly instead of cloning to eliminate redundant heap allocations per parsing alert.
+                    logs.push_back(LogEntry::Alert(alert_text));
 
                     if alerts.len() >= MAX_ALERTS {
                         if let Some(old_entry) = alerts.pop_front() {
