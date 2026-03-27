@@ -1181,9 +1181,9 @@ impl eframe::App for AstroMonitorApp {
                         let len = self.input_target.len();
                         let limit = 255;
                         let color = if len > limit {
-                            egui::Color32::RED
+                            Self::get_alert_color(&AlertLevel::Critical, ui.visuals().dark_mode)
                         } else if len > 230 {
-                            egui::Color32::YELLOW
+                            Self::get_alert_color(&AlertLevel::Warning, ui.visuals().dark_mode)
                         } else {
                             ui.visuals().weak_text_color()
                         };
