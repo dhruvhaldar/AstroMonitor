@@ -502,7 +502,7 @@ impl eframe::App for AstroMonitorApp {
                     egui::ProgressBar::new(progress)
                         // Bolt Optimization: Pass string slice to avoid implicit String cloning in Into<WidgetText>
                         .text(self.progress_text.as_str())
-                        .animate(!self.paused)
+                        .animate(!self.paused && simulation_active)
                 )
                 .on_hover_ui(|ui| {
                     ui.label("Simulation Progress");
