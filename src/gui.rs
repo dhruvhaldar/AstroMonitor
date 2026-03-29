@@ -1041,11 +1041,11 @@ impl eframe::App for AstroMonitorApp {
                         // Palette UX Enhancement: Visual Battery Bar
                         let battery_pct = self.input_battery as f32 / 100.0;
                         let battery_color = if self.input_battery < self.monitor.min_battery_level() {
-                            egui::Color32::RED
+                            Self::get_alert_color(&AlertLevel::Critical, ui.visuals().dark_mode)
                         } else if self.input_battery < 50.0 {
-                            egui::Color32::YELLOW
+                            Self::get_alert_color(&AlertLevel::Warning, ui.visuals().dark_mode)
                         } else {
-                            egui::Color32::GREEN
+                            Self::get_nominal_color(ui.visuals().dark_mode)
                         };
                         ui.add(
                             egui::ProgressBar::new(battery_pct)
@@ -1087,11 +1087,11 @@ impl eframe::App for AstroMonitorApp {
                             ((self.input_temp - min_bound) / range).clamp(0.0, 1.0) as f32;
 
                         let temp_color = if self.input_temp < -273.15 {
-                            egui::Color32::RED
+                            Self::get_alert_color(&AlertLevel::Critical, ui.visuals().dark_mode)
                         } else if self.input_temp > max {
-                            egui::Color32::YELLOW
+                            Self::get_alert_color(&AlertLevel::Warning, ui.visuals().dark_mode)
                         } else {
-                            egui::Color32::GREEN
+                            Self::get_nominal_color(ui.visuals().dark_mode)
                         };
 
                         ui.add(
@@ -1150,9 +1150,9 @@ impl eframe::App for AstroMonitorApp {
                         // Palette UX Enhancement: Visual Confidence Bar
                         let conf_color =
                             if self.input_confidence < self.monitor.min_star_confidence() {
-                                egui::Color32::RED
+                                Self::get_alert_color(&AlertLevel::Info, ui.visuals().dark_mode)
                             } else {
-                                egui::Color32::GREEN
+                                Self::get_nominal_color(ui.visuals().dark_mode)
                             };
                         ui.add(
                             egui::ProgressBar::new(self.input_confidence as f32)
