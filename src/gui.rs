@@ -102,7 +102,7 @@ fn is_malicious_csv_payload(s: &str) -> bool {
     // This yields a measurable ~15% speedup for standard ASCII payloads padded with whitespace.
     for (i, &b) in s.as_bytes().iter().enumerate() {
         if b < 128 {
-            if b == b'=' || b == b'+' || b == b'-' || b == b'@' || b == b'\t' || b == b'\r' {
+            if b == b'=' || b == b'+' || b == b'-' || b == b'@' || b == b'\t' || b == b'\r' || b == b',' || b == b';' || b == b'|' {
                 return true;
             }
             if b.is_ascii_whitespace() || b.is_ascii_control() {
@@ -113,7 +113,7 @@ fn is_malicious_csv_payload(s: &str) -> bool {
             // Found a non-ASCII character. Fall back to chars iterator starting from here.
             for c in s[i..].chars() {
                 if c.is_ascii() {
-                    if c == '=' || c == '+' || c == '-' || c == '@' || c == '\t' || c == '\r' {
+                    if c == '=' || c == '+' || c == '-' || c == '@' || c == '\t' || c == '\r' || c == ',' || c == ';' || c == '|' {
                         return true;
                     }
                     if c.is_whitespace() || c.is_control() {
@@ -2346,6 +2346,99 @@ mod additional_security_tests {
             log_output_with_cr.contains("ID:'\\r=cmd"),
             "CSV Injection Vulnerability: Output '{}' should contain escaped formula with leading Carriage Return characters",
             log_output_with_cr
+        );
+    }
+
+    #[test]
+    fn test_csv_injection_sanitization_delimiters() {
+        // Construct a packet with leading Delimiter (,) before a malicious CSV payload
+        let malicious_id_with_comma = ",=cmd|' /C calc'!A0";
+        let packet_with_comma = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::StarTracker,
+            payload: TelemetryPayload::StarTracker(StarTrackerReading {
+                target_id: Some(Cow::Borrowed(malicious_id_with_comma)),
+                coordinates: CelestialCoordinates {
+                    right_ascension: 0.0,
+                    declination: 0.0,
+                },
+                confidence: 1.0,
+            }),
+        };
+
+        let mut log_output_with_comma = String::new();
+        AstroMonitorApp::format_log_packet(
+            &mut log_output_with_comma,
+            packet_with_comma.timestamp,
+            Some(1),
+            &packet_with_comma.payload,
+        );
+
+        // Assert that the formula with leading Comma is ESCAPED by prepending a quote
+        assert!(
+            log_output_with_comma.contains("ID:',=cmd"),
+            "CSV Injection Vulnerability: Output '{}' should contain escaped formula with leading Comma",
+            log_output_with_comma
+        );
+
+        // Construct a packet with leading Delimiter (;) before a malicious CSV payload
+        let malicious_id_with_semicolon = ";=cmd|' /C calc'!A0";
+        let packet_with_semicolon = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::StarTracker,
+            payload: TelemetryPayload::StarTracker(StarTrackerReading {
+                target_id: Some(Cow::Borrowed(malicious_id_with_semicolon)),
+                coordinates: CelestialCoordinates {
+                    right_ascension: 0.0,
+                    declination: 0.0,
+                },
+                confidence: 1.0,
+            }),
+        };
+
+        let mut log_output_with_semicolon = String::new();
+        AstroMonitorApp::format_log_packet(
+            &mut log_output_with_semicolon,
+            packet_with_semicolon.timestamp,
+            Some(1),
+            &packet_with_semicolon.payload,
+        );
+
+        // Assert that the formula with leading Semicolon is ESCAPED by prepending a quote
+        assert!(
+            log_output_with_semicolon.contains("ID:';=cmd"),
+            "CSV Injection Vulnerability: Output '{}' should contain escaped formula with leading Semicolon",
+            log_output_with_semicolon
+        );
+
+        // Construct a packet with leading Delimiter (|) before a malicious CSV payload
+        let malicious_id_with_pipe = "|=cmd|' /C calc'!A0";
+        let packet_with_pipe = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::StarTracker,
+            payload: TelemetryPayload::StarTracker(StarTrackerReading {
+                target_id: Some(Cow::Borrowed(malicious_id_with_pipe)),
+                coordinates: CelestialCoordinates {
+                    right_ascension: 0.0,
+                    declination: 0.0,
+                },
+                confidence: 1.0,
+            }),
+        };
+
+        let mut log_output_with_pipe = String::new();
+        AstroMonitorApp::format_log_packet(
+            &mut log_output_with_pipe,
+            packet_with_pipe.timestamp,
+            Some(1),
+            &packet_with_pipe.payload,
+        );
+
+        // Assert that the formula with leading Pipe is ESCAPED by prepending a quote
+        assert!(
+            log_output_with_pipe.contains("ID:'|=cmd"),
+            "CSV Injection Vulnerability: Output '{}' should contain escaped formula with leading Pipe",
+            log_output_with_pipe
         );
     }
 }
