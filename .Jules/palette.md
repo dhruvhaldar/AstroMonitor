@@ -115,3 +115,7 @@
 ## 2026-03-28 - Conflicting Visual Signals in Progress States
 **Learning:** Continuing to animate a progress bar (e.g., scrolling stripes) after it has reached 100% and textually indicates "Completed" creates a conflicting visual signal. It makes the user question if the process is actually finished or if a background task is still running.
 **Action:** Stop progress bar animations when the underlying task is complete, ensuring the visual state matches the textual "Completed" state.
+
+## 2026-03-29 - Visual Gauge Color Consistency
+**Learning:** Hardcoding primary colors (RED, YELLOW, GREEN) for visual progress bars creates inconsistent UX when other UI elements (like alerts) adapt to light/dark mode for WCAG contrast. Furthermore, mismatched threat levels (e.g., using RED for an Info-level alert) confuse users.
+**Action:** Always use theme-aware color mapping functions (e.g., `get_alert_color`, `get_nominal_color`) for visual gauges to maintain accessibility and semantic consistency.
