@@ -119,3 +119,7 @@
 ## 2026-03-29 - Visual Gauge Color Consistency
 **Learning:** Hardcoding primary colors (RED, YELLOW, GREEN) for visual progress bars creates inconsistent UX when other UI elements (like alerts) adapt to light/dark mode for WCAG contrast. Furthermore, mismatched threat levels (e.g., using RED for an Info-level alert) confuse users.
 **Action:** Always use theme-aware color mapping functions (e.g., `get_alert_color`, `get_nominal_color`) for visual gauges to maintain accessibility and semantic consistency.
+
+## 2026-03-30 - Visual Color States for Progress Indicators
+**Learning:** Textual states like "Completed" or "Paused" within a progress bar can sometimes be overlooked if the visual weight of the bar itself remains the dominant "active" color.
+**Action:** Use `.fill()` on `egui::ProgressBar` to dynamically adjust the bar's color (e.g., using faint/inactive colors when paused, or success colors when completed) to visually reinforce the current status.
