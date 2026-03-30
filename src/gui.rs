@@ -498,12 +498,19 @@ impl eframe::App for AstroMonitorApp {
 
                 let progress = self.packet_index as f32 / self.packets.len() as f32;
                 // Bolt Optimization: Use cached progress text to avoid formatting/allocation every frame
-                ui.add(
-                    egui::ProgressBar::new(progress)
-                        // Bolt Optimization: Pass string slice to avoid implicit String cloning in Into<WidgetText>
-                        .text(self.progress_text.as_str())
-                        .animate(!self.paused && simulation_active)
-                )
+
+                // Palette UX Enhancement: Visual Color States for Progress Bar
+                let mut progress_bar = egui::ProgressBar::new(progress)
+                    .text(self.progress_text.as_str())
+                    .animate(!self.paused && simulation_active);
+
+                if !simulation_active {
+                    progress_bar = progress_bar.fill(Self::get_nominal_color(ui.visuals().dark_mode));
+                } else if self.paused {
+                    progress_bar = progress_bar.fill(ui.visuals().faint_bg_color);
+                }
+
+                ui.add(progress_bar)
                 .on_hover_ui(|ui| {
                     ui.label("Simulation Progress");
                 });
