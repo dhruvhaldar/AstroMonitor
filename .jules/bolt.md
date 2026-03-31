@@ -52,3 +52,7 @@
 ## 2026-03-26 - [Avoid Redundant String Cloning Before Pushing to Collections]
 **Learning:** Developers often preemptively use `.clone()` when pushing formatted `String` objects into collections like `VecDeque` out of habit. If the local variable is no longer used after the insertion, this causes an entirely redundant heap allocation and string deep copy.
 **Action:** Always verify if a local string variable is actually used *after* it is pushed into a collection. If not, simply pass the string directly to move ownership, eliminating redundant `.clone()` allocations per item and significantly reducing memory churn on hot paths like alert generation.
+
+## 2026-10-18 - [Eliminate Intermediate Dynamic Collections for Iteration]
+**Learning:** In Rust, creating temporary dynamic collections (e.g., `let indices: Vec<usize> = if ... { filtered.clone() } else { (0..len).collect() }`) just to iterate over elements conditionally causes an entirely redundant O(N) heap allocation and deep copy.
+**Action:** Instead, encapsulate the logic in a closure and iterate directly over the source structures using an `if/else` block, completely bypassing the allocation overhead.
