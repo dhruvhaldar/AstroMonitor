@@ -655,29 +655,31 @@ impl eframe::App for AstroMonitorApp {
                             }
 
                             if btn.clicked() {
-                                let indices: Vec<usize> = if self.filter_logs_important {
-                                    self.filtered_log_indices.clone()
+                                // Bolt Optimization: Use direct iteration instead of allocating an intermediate `Vec<usize>`.
+                                // This completely eliminates the O(N) memory allocation and deep copy when copying logs.
+                                let count = if self.filter_logs_important {
+                                    self.filtered_log_indices.len()
                                 } else {
-                                    (0..self.logs.len()).collect()
+                                    self.logs.len()
                                 };
 
-                                // Bolt Optimization: Pre-calculate size estimate and write to single buffer
-                                let mut all_logs = String::with_capacity(indices.len() * 80);
-                                for (i, &idx) in indices.iter().enumerate() {
+                                let mut all_logs = String::with_capacity(count * 80);
+
+                                let mut process_log = |i: usize, idx: usize| {
                                     if i > 0 {
                                         all_logs.push('\n');
                                     }
                                     let log = &self.logs[idx];
                                     match log {
-                                        LogEntry::SimulatedPacket(idx) => {
-                                            if let Some(packet_data) = self.packets.get(*idx) {
+                                        LogEntry::SimulatedPacket(packet_idx) => {
+                                            if let Some(packet_data) = self.packets.get(*packet_idx) {
                                                 // Bolt Optimization: Use parse_trusted to skip checksum validation for internal data
                                                 // SAFETY: The method is now safe (performs UTF-8 validation).
                                                 if let Ok(packet) = Parser::parse_trusted(packet_data) {
                                                     Self::format_log_packet(
                                                         &mut all_logs,
                                                         packet.timestamp,
-                                                        Some(idx + 1),
+                                                        Some(packet_idx + 1),
                                                         &packet.payload,
                                                     );
                                                 } else {
@@ -691,7 +693,18 @@ impl eframe::App for AstroMonitorApp {
                                         LogEntry::Message(s) => all_logs.push_str(s),
                                         LogEntry::Alert(s) => all_logs.push_str(s),
                                     }
+                                };
+
+                                if self.filter_logs_important {
+                                    for (i, &idx) in self.filtered_log_indices.iter().enumerate() {
+                                        process_log(i, idx);
+                                    }
+                                } else {
+                                    for (i, idx) in (0..self.logs.len()).enumerate() {
+                                        process_log(i, idx);
+                                    }
                                 }
+
                                 ui.output_mut(|o| o.copied_text = all_logs);
                                 self.last_log_copy_time = Some(Instant::now());
                                 ui.ctx().request_repaint_after(Duration::from_secs(2));
