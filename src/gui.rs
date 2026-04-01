@@ -102,7 +102,16 @@ fn is_malicious_csv_payload(s: &str) -> bool {
     // This yields a measurable ~15% speedup for standard ASCII payloads padded with whitespace.
     for (i, &b) in s.as_bytes().iter().enumerate() {
         if b < 128 {
-            if b == b'=' || b == b'+' || b == b'-' || b == b'@' || b == b'\t' || b == b'\r' || b == b',' || b == b';' || b == b'|' {
+            if b == b'='
+                || b == b'+'
+                || b == b'-'
+                || b == b'@'
+                || b == b'\t'
+                || b == b'\r'
+                || b == b','
+                || b == b';'
+                || b == b'|'
+            {
                 return true;
             }
             if b.is_ascii_whitespace() || b.is_ascii_control() {
@@ -113,7 +122,16 @@ fn is_malicious_csv_payload(s: &str) -> bool {
             // Found a non-ASCII character. Fall back to chars iterator starting from here.
             for c in s[i..].chars() {
                 if c.is_ascii() {
-                    if c == '=' || c == '+' || c == '-' || c == '@' || c == '\t' || c == '\r' || c == ',' || c == ';' || c == '|' {
+                    if c == '='
+                        || c == '+'
+                        || c == '-'
+                        || c == '@'
+                        || c == '\t'
+                        || c == '\r'
+                        || c == ','
+                        || c == ';'
+                        || c == '|'
+                    {
                         return true;
                     }
                     if c.is_whitespace() || c.is_control() {
@@ -705,7 +723,11 @@ impl eframe::App for AstroMonitorApp {
                             );
                             ui.add_space(10.0);
                             if self.packet_index >= self.packets.len() {
-                                if ui.button("🔄️ Restart Simulation").clicked() {
+                                if ui
+                                    .button("🔄️ Restart Simulation")
+                                    .on_hover_text("Start over from the beginning")
+                                    .clicked()
+                                {
                                     self.packet_index = 0;
                                     self.paused = false;
                                     self.update_progress_text();
@@ -714,7 +736,12 @@ impl eframe::App for AstroMonitorApp {
                                     self.alert_counts = [0, 0, 0];
                                     self.last_update = Instant::now();
                                 }
-                            } else if self.paused && ui.button("▶️ Resume Simulation").clicked() {
+                            } else if self.paused
+                                && ui
+                                    .button("▶️ Resume Simulation")
+                                    .on_hover_text("Continue the paused simulation")
+                                    .clicked()
+                            {
                                 self.paused = false;
                                 self.last_update = Instant::now();
                                 self.update_progress_text();
@@ -729,7 +756,11 @@ impl eframe::App for AstroMonitorApp {
                                 egui::RichText::new("Only routine telemetry packets found").weak(),
                             );
                             ui.add_space(10.0);
-                            if ui.button("View All Logs").clicked() {
+                            if ui
+                                .button("View All Logs")
+                                .on_hover_text("Remove the 'Important Only' filter to see all logs")
+                                .clicked()
+                            {
                                 self.filter_logs_important = false;
                             }
                         });
@@ -878,7 +909,11 @@ impl eframe::App for AstroMonitorApp {
                             ui.label(egui::RichText::new("No active alerts detected").weak());
                             ui.add_space(10.0);
                             if self.packet_index >= self.packets.len() {
-                                if ui.button("🔄️ Restart Simulation").clicked() {
+                                if ui
+                                    .button("🔄️ Restart Simulation")
+                                    .on_hover_text("Start over from the beginning")
+                                    .clicked()
+                                {
                                     self.packet_index = 0;
                                     self.paused = false;
                                     self.update_progress_text();
@@ -887,7 +922,12 @@ impl eframe::App for AstroMonitorApp {
                                     self.alert_counts = [0, 0, 0];
                                     self.last_update = Instant::now();
                                 }
-                            } else if self.paused && ui.button("▶️ Resume Simulation").clicked() {
+                            } else if self.paused
+                                && ui
+                                    .button("▶️ Resume Simulation")
+                                    .on_hover_text("Continue the paused simulation")
+                                    .clicked()
+                            {
                                 self.paused = false;
                                 self.last_update = Instant::now();
                                 self.update_progress_text();
