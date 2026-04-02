@@ -67,3 +67,8 @@
 **Vulnerability:** The CSV injection sanitization logic checked if the payload started with standard formula or control characters. However, if a payload started with common CSV delimiters like `,`, `;`, or `|` (e.g., `,=cmd|...`), the sanitization failed. When this text is exported to CSV and parsed by a spreadsheet application, the delimiter forces the malicious formula into the adjacent cell, executing it.
 **Learning:** CSV injection is not just about the absolute first character of the string; it's about the first character of the resulting *cell* after CSV delimiters are parsed. Prepending a delimiter to a formula is a common bypass if the sanitization logic does not also quote or sanitize delimiters.
 **Prevention:** Include common CSV delimiters (`,`, `;`, `|`) in the prefix validation check. Prepending a quote to any string that begins with a delimiter ensures it remains a harmless string within a single cell, rather than triggering formula execution in the next cell.
+
+## 2024-04-02 - CSV Injection Bypass via Leading Quotes
+**Vulnerability:** A CSV formula injection bypass where an attacker could hide malicious prefixes (`=`, `+`, `-`, `@`) inside leading standard quotes (`"` and `'`), e.g., `"=cmd..."` or `'=cmd...'`. Spreadsheet software often strips these standard quotes before evaluating the cell, triggering the formula execution.
+**Learning:** Checking only the first non-whitespace/non-control character is insufficient for sanitizing CSV injection in logs.
+**Prevention:** In `is_malicious_csv_payload`, explicitly add quotation marks (`"` and `'`) to the list of characters to skip/ignore before validating whether the prefix is a mathematical or execution character.

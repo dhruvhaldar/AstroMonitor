@@ -114,7 +114,7 @@ fn is_malicious_csv_payload(s: &str) -> bool {
             {
                 return true;
             }
-            if b.is_ascii_whitespace() || b.is_ascii_control() {
+            if b == b'"' || b == b'\'' || b.is_ascii_whitespace() || b.is_ascii_control() {
                 continue;
             }
             return false;
@@ -134,7 +134,7 @@ fn is_malicious_csv_payload(s: &str) -> bool {
                     {
                         return true;
                     }
-                    if c.is_whitespace() || c.is_control() {
+                    if c == '"' || c == '\'' || c.is_whitespace() || c.is_control() {
                         continue;
                     }
                     return false;
@@ -2500,5 +2500,50 @@ mod additional_security_tests {
             "CSV Injection Vulnerability: Output '{}' should contain escaped formula with leading Pipe",
             log_output_with_pipe
         );
+    }
+}
+
+#[cfg(test)]
+mod quotes_security_tests {
+    use super::*;
+
+    #[test]
+    fn test_csv_injection_sanitization_quotes() {
+        let payloads = vec![
+            "\"=cmd\"",
+            "'=cmd'",
+            "\"+cmd\"",
+            "\"-cmd\"",
+            "\"@cmd\"",
+            "\",=cmd\"",
+            "\"\t=cmd\"",
+            "\"'=cmd\"",
+            "  \"=cmd\"",
+            "  '=cmd'",
+            "\" \t\r =cmd\"",
+        ];
+
+        for payload in payloads {
+            assert!(
+                is_malicious_csv_payload(payload),
+                "Payload {} should be detected as malicious",
+                payload
+            );
+        }
+
+        let safe_payloads = vec![
+            "\"cmd\"",
+            "'cmd'",
+            "\"  cmd\"",
+            "\" cmd=\"",
+        ];
+
+        for payload in safe_payloads {
+            assert!(
+                !is_malicious_csv_payload(payload),
+                "Payload {} should be detected as safe",
+                payload
+            );
+        }
     }
 }
