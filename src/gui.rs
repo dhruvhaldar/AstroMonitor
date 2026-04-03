@@ -803,10 +803,29 @@ impl eframe::App for AstroMonitorApp {
                                     };
 
                                     // Bolt Optimization: Use pre-formatted string directly to avoid allocation
-                                    let text =
-                                        self.resolve_log_entry_text(&self.logs[actual_index], ui);
+                                    let log_entry = &self.logs[actual_index];
+                                    let text = self.resolve_log_entry_text(log_entry, ui);
+
+                                    // Palette UX Enhancement: Colorize logs based on severity for improved scannability
+                                    let mut rich_text = egui::RichText::new(text.as_ref());
+                                    match log_entry {
+                                        LogEntry::Alert(s) => {
+                                            if s.contains("[Critical]") {
+                                                rich_text = rich_text.color(Self::get_alert_color(&AlertLevel::Critical, ui.visuals().dark_mode));
+                                            } else if s.contains("[Warning]") {
+                                                rich_text = rich_text.color(Self::get_alert_color(&AlertLevel::Warning, ui.visuals().dark_mode));
+                                            } else {
+                                                rich_text = rich_text.color(Self::get_alert_color(&AlertLevel::Info, ui.visuals().dark_mode));
+                                            }
+                                        }
+                                        LogEntry::Message(s) if s.contains("Error") => {
+                                            rich_text = rich_text.color(Self::get_alert_color(&AlertLevel::Critical, ui.visuals().dark_mode));
+                                        }
+                                        _ => {} // Packets and normal messages use default color
+                                    }
+
                                     // Ensure fixed height by disabling wrap/truncating
-                                    ui.add(egui::Label::new(text.as_ref()).truncate())
+                                    ui.add(egui::Label::new(rich_text).truncate())
                                         .on_hover_ui(|ui| {
                                             ui.label(text.as_ref());
                                             ui.separator();

@@ -123,3 +123,7 @@
 ## 2026-03-30 - Visual Color States for Progress Indicators
 **Learning:** Textual states like "Completed" or "Paused" within a progress bar can sometimes be overlooked if the visual weight of the bar itself remains the dominant "active" color.
 **Action:** Use `.fill()` on `egui::ProgressBar` to dynamically adjust the bar's color (e.g., using faint/inactive colors when paused, or success colors when completed) to visually reinforce the current status.
+
+## 2026-03-31 - Color-Coded Log Streams
+**Learning:** In dense data streams like system logs, displaying all entries in a uniform text color reduces scannability. Important events like Alerts or Errors blend in with routine telemetry, forcing users to read rather than scan.
+**Action:** Colorize list items based on their semantic severity (e.g., Critical=Red, Warning=Yellow) directly in the log view to drastically improve visual scannability and anomaly detection.
