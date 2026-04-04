@@ -209,6 +209,22 @@ pub struct AstroMonitorApp {
     cached_battery_tooltip: String,
     cached_temp_tooltip: String,
     cached_star_tooltip: String,
+
+    // Cached Header and UI Texts (Bolt Optimization)
+    // Prevents redundant string formatting/allocation inside the immediate-mode render loop
+    cached_log_header: String,
+    last_logs_len: usize,
+    last_filtered_len: usize,
+    last_filter_important: bool,
+
+    cached_alert_header: String,
+    last_alerts_len: usize,
+
+    cached_delay_text: String,
+    last_delay_ms: u64,
+
+    cached_target_len_text: String,
+    last_target_len: usize,
 }
 
 impl Default for AstroMonitorApp {
@@ -265,6 +281,18 @@ impl Default for AstroMonitorApp {
             cached_battery_tooltip,
             cached_temp_tooltip,
             cached_star_tooltip,
+
+            // Cached Header and UI Texts
+            cached_log_header: String::new(), // Initialized lazily or set on first frame
+            last_logs_len: usize::MAX,
+            last_filtered_len: usize::MAX,
+            last_filter_important: false,
+            cached_alert_header: String::new(),
+            last_alerts_len: usize::MAX,
+            cached_delay_text: String::new(),
+            last_delay_ms: u64::MAX,
+            cached_target_len_text: String::new(),
+            last_target_len: usize::MAX,
 
             // Default input values
             input_subsystem: InputSubsystem::Power,
@@ -489,14 +517,23 @@ impl eframe::App for AstroMonitorApp {
                 }
                 // Palette UX Enhancement: Display frequency (Hz) alongside delay (ms)
                 let freq = 1000.0 / self.simulation_delay_ms as f64;
+
+                // Bolt Optimization: Cache delay text formatting
+                if self.simulation_delay_ms != self.last_delay_ms {
+                    self.cached_delay_text.clear();
+                    let _ = write!(&mut self.cached_delay_text, "Delay (ms) [{:.1} Hz]", freq);
+                    self.last_delay_ms = self.simulation_delay_ms;
+                }
+
                 if ui
                     .add(
                         egui::Slider::new(&mut self.simulation_delay_ms, 100..=2000)
                             .logarithmic(true)
-                            .text(format!("Delay (ms) [{:.1} Hz]", freq)),
+                            .text(self.cached_delay_text.as_str()),
                     )
                     .on_hover_ui(|ui| {
                         ui.label("Adjust simulation speed (delay between packets in milliseconds)");
+                        // Hover UI is conditional and evaluated lazily so formatting inside is acceptable
                         ui.label(
                             egui::RichText::new(format!("Frequency: {:.1} Hz", freq))
                                 .strong()
@@ -566,16 +603,32 @@ impl eframe::App for AstroMonitorApp {
                 // Logs Column
                 columns[0].vertical(|ui| {
                     ui.horizontal(|ui| {
-                        let header_text = if self.filter_logs_important {
-                            format!(
-                                "System Logs (Filtered: {}/{})",
-                                self.filtered_log_indices.len(),
-                                self.logs.len()
-                            )
-                        } else {
-                            format!("System Logs ({})", self.logs.len())
-                        };
-                        ui.heading(header_text);
+                        // Bolt Optimization: Cache log header string
+                        if self.logs.len() != self.last_logs_len
+                            || self.filtered_log_indices.len() != self.last_filtered_len
+                            || self.filter_logs_important != self.last_filter_important
+                        {
+                            self.cached_log_header.clear();
+                            if self.filter_logs_important {
+                                let _ = write!(
+                                    &mut self.cached_log_header,
+                                    "System Logs (Filtered: {}/{})",
+                                    self.filtered_log_indices.len(),
+                                    self.logs.len()
+                                );
+                            } else {
+                                let _ = write!(
+                                    &mut self.cached_log_header,
+                                    "System Logs ({})",
+                                    self.logs.len()
+                                );
+                            }
+                            self.last_logs_len = self.logs.len();
+                            self.last_filtered_len = self.filtered_log_indices.len();
+                            self.last_filter_important = self.filter_logs_important;
+                        }
+
+                        ui.heading(self.cached_log_header.as_str());
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             let (clear_icon, clear_tooltip, confirm_mode) = if let Some(_t) =
                                 self.log_clear_confirm.filter(|t| current_frame_time.saturating_duration_since(*t).as_secs() < 3)
@@ -826,7 +879,18 @@ impl eframe::App for AstroMonitorApp {
                 // Alerts Column
                 columns[1].vertical(|ui| {
                     ui.horizontal(|ui| {
-                        ui.heading(format!("Active Alerts ({})", self.alerts.len()));
+                        // Bolt Optimization: Cache alerts header string
+                        if self.alerts.len() != self.last_alerts_len {
+                            self.cached_alert_header.clear();
+                            let _ = write!(
+                                &mut self.cached_alert_header,
+                                "Active Alerts ({})",
+                                self.alerts.len()
+                            );
+                            self.last_alerts_len = self.alerts.len();
+                        }
+
+                        ui.heading(self.cached_alert_header.as_str());
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             let (clear_icon, clear_tooltip, confirm_mode) = if let Some(_t) =
                                 self.alert_clear_confirm.filter(|t| current_frame_time.saturating_duration_since(*t).as_secs() < 3)
@@ -1248,7 +1312,14 @@ impl eframe::App for AstroMonitorApp {
                             ui.visuals().weak_text_color()
                         };
 
-                        ui.label(egui::RichText::new(format!("{}/{}", len, limit)).color(color))
+                        // Bolt Optimization: Cache target length text
+                        if len != self.last_target_len {
+                            self.cached_target_len_text.clear();
+                            let _ = write!(&mut self.cached_target_len_text, "{}/{}", len, limit);
+                            self.last_target_len = len;
+                        }
+
+                        ui.label(egui::RichText::new(self.cached_target_len_text.as_str()).color(color))
                             .on_hover_ui(|ui| {
                                 ui.label("Protocol limit: 255 bytes.");
                                 ui.label("Input exceeding this cannot be injected.");

@@ -56,3 +56,7 @@
 ## 2026-10-18 - [Eliminate Intermediate Dynamic Collections for Iteration]
 **Learning:** In Rust, creating temporary dynamic collections (e.g., `let indices: Vec<usize> = if ... { filtered.clone() } else { (0..len).collect() }`) just to iterate over elements conditionally causes an entirely redundant O(N) heap allocation and deep copy.
 **Action:** Instead, encapsulate the logic in a closure and iterate directly over the source structures using an `if/else` block, completely bypassing the allocation overhead.
+
+## 2026-10-18 - [Avoid Redundant String Allocation in Render Loop Headers]
+**Learning:** In immediate mode GUI frameworks like `egui` executing at 60 FPS, calling `format!()` or concatenating dynamically sized string buffers every frame (such as calculating element counts or system statuses for headers) allocates and drops memory continuously. This introduces severe heap allocation pressure and CPU overhead that degrades render loop performance.
+**Action:** Cache UI header strings that depend on state counts inside the component struct. In the `update` loop, check if the underlying counts changed, and only write updates to the pre-allocated string (using `std::fmt::Write`) when a state change genuinely occurred. Then, borrow this statically-sized string cache for UI rendering.
