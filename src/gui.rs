@@ -114,7 +114,7 @@ fn is_malicious_csv_payload(s: &str) -> bool {
             {
                 return true;
             }
-            if b.is_ascii_whitespace() || b.is_ascii_control() {
+            if b.is_ascii_whitespace() || b.is_ascii_control() || b == b'"' || b == b'\'' {
                 continue;
             }
             return false;
@@ -134,7 +134,7 @@ fn is_malicious_csv_payload(s: &str) -> bool {
                     {
                         return true;
                     }
-                    if c.is_whitespace() || c.is_control() {
+                    if c.is_whitespace() || c.is_control() || c == '"' || c == '\'' {
                         continue;
                     }
                     return false;
@@ -144,8 +144,9 @@ fn is_malicious_csv_payload(s: &str) -> bool {
                         || ('\u{202A}'..='\u{202E}').contains(&c)
                         || ('\u{2066}'..='\u{2069}').contains(&c)
                         || c.is_control() // Unicode control chars not in ASCII
-                        || c.is_whitespace()
-                    // Unicode whitespace not in ASCII
+                        || c.is_whitespace() // Unicode whitespace not in ASCII
+                        || c == '"'
+                        || c == '\''
                     {
                         continue;
                     }
@@ -2499,6 +2500,69 @@ mod additional_security_tests {
             log_output_with_pipe.contains("ID:'|=cmd"),
             "CSV Injection Vulnerability: Output '{}' should contain escaped formula with leading Pipe",
             log_output_with_pipe
+        );
+    }
+
+    #[test]
+    fn test_csv_injection_sanitization_quotes() {
+        // Construct a packet with leading Double Quote before a malicious CSV payload
+        let malicious_id_with_double_quote = "\"=cmd|' /C calc'!A0";
+        let packet_with_double_quote = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::StarTracker,
+            payload: TelemetryPayload::StarTracker(StarTrackerReading {
+                target_id: Some(Cow::Borrowed(malicious_id_with_double_quote)),
+                coordinates: CelestialCoordinates {
+                    right_ascension: 0.0,
+                    declination: 0.0,
+                },
+                confidence: 1.0,
+            }),
+        };
+
+        let mut log_output_with_double_quote = String::new();
+        AstroMonitorApp::format_log_packet(
+            &mut log_output_with_double_quote,
+            packet_with_double_quote.timestamp,
+            Some(1),
+            &packet_with_double_quote.payload,
+        );
+
+        // Assert that the formula with leading Double Quote is ESCAPED by prepending a quote
+        assert!(
+            log_output_with_double_quote.contains("ID:'\\\"=cmd"),
+            "CSV Injection Vulnerability: Output '{}' should contain escaped formula with leading Double Quote",
+            log_output_with_double_quote
+        );
+
+        // Construct a packet with leading Single Quote before a malicious CSV payload
+        let malicious_id_with_single_quote = "'=cmd|' /C calc'!A0";
+        let packet_with_single_quote = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::StarTracker,
+            payload: TelemetryPayload::StarTracker(StarTrackerReading {
+                target_id: Some(Cow::Borrowed(malicious_id_with_single_quote)),
+                coordinates: CelestialCoordinates {
+                    right_ascension: 0.0,
+                    declination: 0.0,
+                },
+                confidence: 1.0,
+            }),
+        };
+
+        let mut log_output_with_single_quote = String::new();
+        AstroMonitorApp::format_log_packet(
+            &mut log_output_with_single_quote,
+            packet_with_single_quote.timestamp,
+            Some(1),
+            &packet_with_single_quote.payload,
+        );
+
+        // Assert that the formula with leading Single Quote is ESCAPED by prepending a quote
+        assert!(
+            log_output_with_single_quote.contains("ID:'\\'=cmd"),
+            "CSV Injection Vulnerability: Output '{}' should contain escaped formula with leading Single Quote",
+            log_output_with_single_quote
         );
     }
 }
