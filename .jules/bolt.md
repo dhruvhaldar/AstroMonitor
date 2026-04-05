@@ -56,3 +56,7 @@
 ## 2026-10-18 - [Eliminate Intermediate Dynamic Collections for Iteration]
 **Learning:** In Rust, creating temporary dynamic collections (e.g., `let indices: Vec<usize> = if ... { filtered.clone() } else { (0..len).collect() }`) just to iterate over elements conditionally causes an entirely redundant O(N) heap allocation and deep copy.
 **Action:** Instead, encapsulate the logic in a closure and iterate directly over the source structures using an `if/else` block, completely bypassing the allocation overhead.
+
+## 2025-02-12 - Eliminate egui render loop format! allocations via struct-level caching
+**Learning:** `egui` interfaces run in immediate mode (60 FPS). Any `format!()` calls in the `update()` loop incur severe heap allocation overhead, as memory is allocated, formatted, and dropped on every single frame. This codebase frequently constructed dynamic headers (`"Delay (ms) [{:.1} Hz]"` or `"System Logs ({})"`) per frame.
+**Action:** Instead of calling `format!()` unconditionally during layout, cache dynamic string buffers directly within the `App` struct. Update these buffers conditionally using `std::fmt::Write` (`write!`) only when their underlying dependent state changes (e.g., `logs.len() != cached_logs_count`). This converts `O(frames)` heap allocations to `O(state changes)`.
