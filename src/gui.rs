@@ -402,10 +402,8 @@ impl eframe::App for AstroMonitorApp {
             // Control Bar
             ui.horizontal(|ui| {
                 let simulation_active = self.packet_index < self.packets.len();
-                let mut btn_clicked = false;
-
-                ui.add_enabled_ui(simulation_active, |ui| {
-                    let mut btn = ui.add_sized(
+                let mut btn = ui.add_enabled_ui(simulation_active, |ui| {
+                    ui.add_sized(
                         [80.0, 0.0],
                         egui::Button::new(if self.paused {
                             "▶️ Resume"
@@ -413,19 +411,19 @@ impl eframe::App for AstroMonitorApp {
                             "⏸️ Pause"
                         })
                         .shortcut_text("Space"),
-                    );
+                    )
+                }).inner;
 
-                    // Palette UX Enhancement: Disable Pause/Resume when simulation is complete
-                    if simulation_active {
-                        btn = btn.on_hover_ui(|ui| {
-                            ui.label("Pause or resume the simulation updates.");
-                        });
-                    } else {
-                        btn = btn.on_disabled_hover_text("Simulation completed. Restart to resume.");
-                    }
+                // Palette UX Enhancement: Disable Pause/Resume when simulation is complete
+                if simulation_active {
+                    btn = btn.on_hover_ui(|ui| {
+                        ui.label("Pause or resume the simulation updates.");
+                    });
+                } else {
+                    btn = btn.on_disabled_hover_text("Simulation completed. Restart to resume.");
+                }
 
-                    btn_clicked = btn.clicked();
-                });
+                let btn_clicked = btn.clicked();
 
                 if btn_clicked {
                     self.paused = !self.paused;
@@ -1291,25 +1289,24 @@ impl eframe::App for AstroMonitorApp {
                 _ => true,
             };
 
-            let mut inject_clicked = false;
-            ui.add_enabled_ui(is_input_valid, |ui| {
-                let mut btn_response = ui.add_sized(
+            let mut btn_response = ui.add_enabled_ui(is_input_valid, |ui| {
+                ui.add_sized(
                     [120.0, 0.0],
                     egui::Button::new(button_text).shortcut_text("Ctrl+Enter"),
+                )
+            }).inner;
+
+            if is_input_valid {
+                btn_response = btn_response.on_hover_ui(|ui| {
+                    ui.label(button_tooltip);
+                });
+            } else {
+                btn_response = btn_response.on_disabled_hover_text(
+                    "Cannot inject: Target ID exceeds the 255 byte protocol limit.",
                 );
+            }
 
-                if is_input_valid {
-                    btn_response = btn_response.on_hover_ui(|ui| {
-                        ui.label(button_tooltip);
-                    });
-                } else {
-                    btn_response = btn_response.on_disabled_hover_text(
-                        "Cannot inject: Target ID exceeds the 255 byte protocol limit.",
-                    );
-                }
-
-                inject_clicked = btn_response.clicked();
-            });
+            let inject_clicked = btn_response.clicked();
 
             if inject_clicked
                 || (is_input_valid && ui.input(|i| i.modifiers.command && i.key_pressed(egui::Key::Enter)))

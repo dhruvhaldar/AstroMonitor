@@ -123,3 +123,7 @@
 ## 2026-03-30 - Visual Color States for Progress Indicators
 **Learning:** Textual states like "Completed" or "Paused" within a progress bar can sometimes be overlooked if the visual weight of the bar itself remains the dominant "active" color.
 **Action:** Use `.fill()` on `egui::ProgressBar` to dynamically adjust the bar's color (e.g., using faint/inactive colors when paused, or success colors when completed) to visually reinforce the current status.
+
+## 2026-03-31 - Disabled Hover Tooltips on Transitory Buttons
+**Learning:** Attaching `.on_disabled_hover_text` inside an `ui.add_enabled_ui(...)` block fails to trigger tooltips properly for users.
+**Action:** Always extract the `.inner` response from `ui.add_enabled_ui`, and chain `.on_hover_ui` and `.on_disabled_hover_text` onto it outside of the block.
