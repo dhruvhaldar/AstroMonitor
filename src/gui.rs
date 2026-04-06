@@ -379,14 +379,18 @@ impl eframe::App for AstroMonitorApp {
                     ui.add(egui::Button::new("?").frame(false))
                         .on_hover_ui(|ui| {
                             ui.heading("Help & Shortcuts");
-                            ui.horizontal(|ui| {
-                                ui.label(egui::RichText::new("Space").strong());
-                                ui.label("Toggle Pause/Resume");
-                            });
-                            ui.horizontal(|ui| {
-                                ui.label(egui::RichText::new("Ctrl + Enter").strong());
-                                ui.label("Inject Manual Packet");
-                            });
+                            egui::Grid::new("shortcuts_grid")
+                                .num_columns(2)
+                                .spacing([16.0, 4.0])
+                                .show(ui, |ui| {
+                                    ui.label(egui::RichText::new("Space").strong());
+                                    ui.label("Toggle Pause/Resume");
+                                    ui.end_row();
+                                    let modifier = if cfg!(target_os = "macos") { "Cmd" } else { "Ctrl" };
+                                    ui.label(egui::RichText::new(format!("{} + Enter", modifier)).strong());
+                                    ui.label("Inject Manual Packet");
+                                    ui.end_row();
+                                });
                             ui.separator();
                             ui.label(egui::RichText::new("Tips:").strong());
                             ui.label("• Hold Shift while dragging values for precision.");
@@ -1374,9 +1378,10 @@ impl eframe::App for AstroMonitorApp {
 
             let mut inject_clicked = false;
             ui.add_enabled_ui(is_input_valid, |ui| {
+                let shortcut_mod = if cfg!(target_os = "macos") { "Cmd" } else { "Ctrl" };
                 let mut btn_response = ui.add_sized(
                     [120.0, 0.0],
-                    egui::Button::new(button_text).shortcut_text("Ctrl+Enter"),
+                    egui::Button::new(button_text).shortcut_text(format!("{}+Enter", shortcut_mod)),
                 );
 
                 if is_input_valid {
@@ -2200,7 +2205,10 @@ mod tests {
         logs.push_back(LogEntry::Message("System initialized".to_string(), false));
         logs.push_back(LogEntry::Packet("Packet data 1".to_string()));
         logs.push_back(LogEntry::SimulatedPacket(0));
-        logs.push_back(LogEntry::Alert("System Critical".to_string(), AlertLevel::Critical));
+        logs.push_back(LogEntry::Alert(
+            "System Critical".to_string(),
+            AlertLevel::Critical,
+        ));
         logs.push_back(LogEntry::Packet("Packet data 2".to_string()));
 
         // Filter logic: !matches!(entry, LogEntry::Packet(_) | LogEntry::SimulatedPacket(_))
@@ -2401,7 +2409,10 @@ fn test_log_filtering_logic() {
     logs.push_back(LogEntry::Message("System initialized".to_string(), false));
     logs.push_back(LogEntry::Packet("Packet data 1".to_string()));
     logs.push_back(LogEntry::SimulatedPacket(0));
-    logs.push_back(LogEntry::Alert("System Critical".to_string(), AlertLevel::Critical));
+    logs.push_back(LogEntry::Alert(
+        "System Critical".to_string(),
+        AlertLevel::Critical,
+    ));
     logs.push_back(LogEntry::Packet("Packet data 2".to_string()));
 
     // Filter logic: !matches!(entry, LogEntry::Packet(_) | LogEntry::SimulatedPacket(_))

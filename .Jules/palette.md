@@ -127,3 +127,7 @@
 ## 2026-03-31 - Semantic Colorization for Dense Data Streams
 **Learning:** In `egui` applications, uniform text color for dense data streams (like system logs) makes it difficult for users to quickly scan and identify critical information. While brackets (e.g. `[Critical]`) help, applying semantic colorization directly to the list items significantly improves visual scannability.
 **Action:** Use `egui::RichText` and theme-aware color mapping functions to conditionally colorize list items based on keywords or severity levels, ensuring alerts stand out from routine data.
+
+## 2025-02-12 - OS-Aware Shortcut Formatting and Clean Grid Layouts
+**Learning:** In cross-platform applications, hardcoding keyboard shortcuts as "Ctrl" causes friction for macOS users who expect "Cmd". Additionally, using stacked horizontal layouts for lists of shortcuts looks messy and misaligned.
+**Action:** Always conditionally format modifier keys based on the OS (e.g., `if cfg!(target_os = "macos") { "Cmd" } else { "Ctrl" }`) when displaying shortcut hints. For tabular data like shortcut lists in tooltips, always use `egui::Grid` instead of nested `ui.horizontal()` blocks to ensure clean, consistent alignment.
