@@ -123,3 +123,7 @@
 ## 2026-03-30 - Visual Color States for Progress Indicators
 **Learning:** Textual states like "Completed" or "Paused" within a progress bar can sometimes be overlooked if the visual weight of the bar itself remains the dominant "active" color.
 **Action:** Use `.fill()` on `egui::ProgressBar` to dynamically adjust the bar's color (e.g., using faint/inactive colors when paused, or success colors when completed) to visually reinforce the current status.
+
+## 2026-03-31 - Semantic Colorization for Dense Data Streams
+**Learning:** In `egui` applications, uniform text color for dense data streams (like system logs) makes it difficult for users to quickly scan and identify critical information. While brackets (e.g. `[Critical]`) help, applying semantic colorization directly to the list items significantly improves visual scannability.
+**Action:** Use `egui::RichText` and theme-aware color mapping functions to conditionally colorize list items based on keywords or severity levels, ensuring alerts stand out from routine data.

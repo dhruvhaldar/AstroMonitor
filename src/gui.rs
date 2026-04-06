@@ -805,8 +805,21 @@ impl eframe::App for AstroMonitorApp {
                                     // Bolt Optimization: Use pre-formatted string directly to avoid allocation
                                     let text =
                                         self.resolve_log_entry_text(&self.logs[actual_index], ui);
+
+                                    let dark_mode = ui.visuals().dark_mode;
+                                    let text_str = text.as_ref();
+                                    let colored_text = if text_str.contains("Critical") || text_str.contains("Error") {
+                                        egui::RichText::new(text_str).color(Self::get_alert_color(&AlertLevel::Critical, dark_mode))
+                                    } else if text_str.contains("Warning") {
+                                        egui::RichText::new(text_str).color(Self::get_alert_color(&AlertLevel::Warning, dark_mode))
+                                    } else if text_str.contains("Info") {
+                                        egui::RichText::new(text_str).color(Self::get_alert_color(&AlertLevel::Info, dark_mode))
+                                    } else {
+                                        egui::RichText::new(text_str)
+                                    };
+
                                     // Ensure fixed height by disabling wrap/truncating
-                                    ui.add(egui::Label::new(text.as_ref()).truncate())
+                                    ui.add(egui::Label::new(colored_text).truncate())
                                         .on_hover_ui(|ui| {
                                             ui.label(text.as_ref());
                                             ui.separator();
