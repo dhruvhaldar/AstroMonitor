@@ -47,8 +47,8 @@ impl<'a> From<ResolvedLogText<'a>> for egui::WidgetText {
 enum LogEntry {
     Packet(String),
     SimulatedPacket(usize),
-    Message(String),
-    Alert(String),
+    Message(String, bool), // is_error
+    Alert(String, AlertLevel),
 }
 
 impl std::fmt::Display for LogEntry {
@@ -56,8 +56,8 @@ impl std::fmt::Display for LogEntry {
         match self {
             LogEntry::Packet(s) => write!(f, "{}", s),
             LogEntry::SimulatedPacket(idx) => write!(f, "Packet {}", idx + 1),
-            LogEntry::Message(s) => write!(f, "{}", s),
-            LogEntry::Alert(s) => write!(f, "{}", s),
+            LogEntry::Message(s, _) => write!(f, "{}", s),
+            LogEntry::Alert(s, _) => write!(f, "{}", s),
         }
     }
 }
@@ -67,8 +67,8 @@ impl LogEntry {
         match self {
             LogEntry::Packet(s) => s,
             LogEntry::SimulatedPacket(_) => String::new(), // Cannot convert index back to formatted string without context
-            LogEntry::Message(s) => s,
-            LogEntry::Alert(s) => s,
+            LogEntry::Message(s, _) => s,
+            LogEntry::Alert(s, _) => s,
         }
     }
 }
@@ -740,8 +740,8 @@ impl eframe::App for AstroMonitorApp {
                                             }
                                         }
                                         LogEntry::Packet(s) => all_logs.push_str(s),
-                                        LogEntry::Message(s) => all_logs.push_str(s),
-                                        LogEntry::Alert(s) => all_logs.push_str(s),
+                                        LogEntry::Message(s, _) => all_logs.push_str(s),
+                                        LogEntry::Alert(s, _) => all_logs.push_str(s),
                                     }
                                 };
 
@@ -853,19 +853,25 @@ impl eframe::App for AstroMonitorApp {
                                     };
 
                                     // Bolt Optimization: Use pre-formatted string directly to avoid allocation
-                                    let text =
-                                        self.resolve_log_entry_text(&self.logs[actual_index], ui);
+                                    let entry = &self.logs[actual_index];
+                                    let text = self.resolve_log_entry_text(entry, ui);
 
                                     let dark_mode = ui.visuals().dark_mode;
                                     let text_str = text.as_ref();
-                                    let colored_text = if text_str.contains("Critical") || text_str.contains("Error") {
-                                        egui::RichText::new(text_str).color(Self::get_alert_color(&AlertLevel::Critical, dark_mode))
-                                    } else if text_str.contains("Warning") {
-                                        egui::RichText::new(text_str).color(Self::get_alert_color(&AlertLevel::Warning, dark_mode))
-                                    } else if text_str.contains("Info") {
-                                        egui::RichText::new(text_str).color(Self::get_alert_color(&AlertLevel::Info, dark_mode))
-                                    } else {
-                                        egui::RichText::new(text_str)
+
+                                    // Bolt Optimization: Replace expensive string-matching `.contains()` per-frame per-row
+                                    // with an O(1) enum match by accessing the cached states directly on `LogEntry`.
+                                    // This eliminates ~3 calls to `.contains()` per row which scans the whole string.
+                                    let colored_text = match entry {
+                                        LogEntry::Alert(_, level) => {
+                                            egui::RichText::new(text_str).color(Self::get_alert_color(level, dark_mode))
+                                        }
+                                        LogEntry::Message(_, is_error) if *is_error => {
+                                            egui::RichText::new(text_str).color(Self::get_alert_color(&AlertLevel::Critical, dark_mode))
+                                        }
+                                        _ => {
+                                            egui::RichText::new(text_str)
+                                        }
                                     };
 
                                     // Ensure fixed height by disabling wrap/truncating
@@ -1546,8 +1552,8 @@ impl AstroMonitorApp {
                 }
             }
             LogEntry::Packet(s) => ResolvedLogText::Borrowed(s),
-            LogEntry::Message(s) => ResolvedLogText::Borrowed(s),
-            LogEntry::Alert(s) => ResolvedLogText::Borrowed(s),
+            LogEntry::Message(s, _) => ResolvedLogText::Borrowed(s),
+            LogEntry::Alert(s, _) => ResolvedLogText::Borrowed(s),
         }
     }
 
@@ -1691,13 +1697,14 @@ impl AstroMonitorApp {
         // Bolt Optimization: Write directly to recycled buffer to avoid allocation
         let _ = std::fmt::write(&mut buffer, args);
 
-        if buffer.contains("Error") {
+        let is_error = buffer.contains("Error");
+        if is_error {
             error!("{}", buffer);
         } else {
             info!("{}", buffer);
         }
 
-        logs.push_back(LogEntry::Message(buffer));
+        logs.push_back(LogEntry::Message(buffer, is_error));
     }
 
     // Bolt Optimization: Static processing function to allow split borrowing
@@ -1770,7 +1777,7 @@ impl AstroMonitorApp {
                         AlertLevel::Info => info!("{}", alert_text),
                     }
 
-                    logs.push_back(LogEntry::Alert(alert_text));
+                    logs.push_back(LogEntry::Alert(alert_text, event.level));
 
                     // Bolt Optimization: Store MonitorEvent directly to avoid string formatting and allocation
                     if alerts.len() >= MAX_ALERTS {
@@ -1855,7 +1862,7 @@ impl AstroMonitorApp {
                     warn!("{}", alert_text);
 
                     // Bolt Optimization: Move alert_text directly instead of cloning to eliminate redundant heap allocations per parsing alert.
-                    logs.push_back(LogEntry::Alert(alert_text));
+                    logs.push_back(LogEntry::Alert(alert_text, event.level));
 
                     if alerts.len() >= MAX_ALERTS {
                         if let Some(old_entry) = alerts.pop_front() {
@@ -2190,10 +2197,10 @@ mod tests {
     #[test]
     fn test_log_filtering_logic() {
         let mut logs = VecDeque::new();
-        logs.push_back(LogEntry::Message("System initialized".to_string()));
+        logs.push_back(LogEntry::Message("System initialized".to_string(), false));
         logs.push_back(LogEntry::Packet("Packet data 1".to_string()));
         logs.push_back(LogEntry::SimulatedPacket(0));
-        logs.push_back(LogEntry::Alert("System Critical".to_string()));
+        logs.push_back(LogEntry::Alert("System Critical".to_string(), AlertLevel::Critical));
         logs.push_back(LogEntry::Packet("Packet data 2".to_string()));
 
         // Filter logic: !matches!(entry, LogEntry::Packet(_) | LogEntry::SimulatedPacket(_))
@@ -2204,12 +2211,12 @@ mod tests {
 
         assert_eq!(filtered.len(), 2, "Should only contain Message and Alert");
 
-        match filtered[0] {
-            LogEntry::Message(s) => assert_eq!(s, "System initialized"),
+        match &filtered[0] {
+            LogEntry::Message(s, _) => assert_eq!(s, "System initialized"),
             _ => panic!("Expected Message"),
         }
-        match filtered[1] {
-            LogEntry::Alert(s) => assert_eq!(s, "System Critical"),
+        match &filtered[1] {
+            LogEntry::Alert(s, _) => assert_eq!(s, "System Critical"),
             _ => panic!("Expected Alert"),
         }
     }
@@ -2391,10 +2398,10 @@ mod security_tests {
 #[test]
 fn test_log_filtering_logic() {
     let mut logs = VecDeque::new();
-    logs.push_back(LogEntry::Message("System initialized".to_string()));
+    logs.push_back(LogEntry::Message("System initialized".to_string(), false));
     logs.push_back(LogEntry::Packet("Packet data 1".to_string()));
     logs.push_back(LogEntry::SimulatedPacket(0));
-    logs.push_back(LogEntry::Alert("System Critical".to_string()));
+    logs.push_back(LogEntry::Alert("System Critical".to_string(), AlertLevel::Critical));
     logs.push_back(LogEntry::Packet("Packet data 2".to_string()));
 
     // Filter logic: !matches!(entry, LogEntry::Packet(_) | LogEntry::SimulatedPacket(_))
@@ -2405,12 +2412,12 @@ fn test_log_filtering_logic() {
 
     assert_eq!(filtered.len(), 2, "Should only contain Message and Alert");
 
-    match filtered[0] {
-        LogEntry::Message(s) => assert_eq!(s, "System initialized"),
+    match &filtered[0] {
+        LogEntry::Message(s, _) => assert_eq!(s, "System initialized"),
         _ => panic!("Expected Message"),
     }
-    match filtered[1] {
-        LogEntry::Alert(s) => assert_eq!(s, "System Critical"),
+    match &filtered[1] {
+        LogEntry::Alert(s, _) => assert_eq!(s, "System Critical"),
         _ => panic!("Expected Alert"),
     }
 }
