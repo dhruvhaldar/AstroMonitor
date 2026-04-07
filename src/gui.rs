@@ -142,6 +142,7 @@ fn is_malicious_csv_payload(s: &str) -> bool {
                     return false;
                 } else {
                     if c == '\u{FEFF}'
+                        || c == '\u{3164}'
                         || ('\u{200B}'..='\u{200F}').contains(&c)
                         || ('\u{202A}'..='\u{202E}').contains(&c)
                         || ('\u{2066}'..='\u{2069}').contains(&c)
@@ -2438,6 +2439,39 @@ mod additional_security_tests {
     use super::*;
     use crate::models::{CelestialCoordinates, StarTrackerReading, Subsystem, TelemetryPayload};
     use std::borrow::Cow;
+
+    #[test]
+    fn test_csv_injection_sanitization_hangul_filler() {
+        // Construct a packet with leading Hangul Filler before a malicious CSV payload
+        let malicious_id_with_hangul = "\u{3164}=cmd|' /C calc'!A0";
+        let packet_with_hangul = TelemetryPacket {
+            timestamp: 1234567890,
+            subsystem: Subsystem::StarTracker,
+            payload: TelemetryPayload::StarTracker(StarTrackerReading {
+                target_id: Some(Cow::Borrowed(malicious_id_with_hangul)),
+                coordinates: CelestialCoordinates {
+                    right_ascension: 0.0,
+                    declination: 0.0,
+                },
+                confidence: 1.0,
+            }),
+        };
+
+        let mut log_output_with_hangul = String::new();
+        AstroMonitorApp::format_log_packet(
+            &mut log_output_with_hangul,
+            packet_with_hangul.timestamp,
+            Some(1),
+            &packet_with_hangul.payload,
+        );
+
+        // Assert that the formula with leading Hangul Filler is ESCAPED by prepending a quote
+        assert!(
+            log_output_with_hangul.contains("ID:'\u{3164}=cmd"),
+            "CSV Injection Vulnerability: Output '{}' should contain escaped formula with leading Hangul Filler",
+            log_output_with_hangul
+        );
+    }
 
     #[test]
     fn test_csv_injection_sanitization_tab_cr() {
