@@ -135,3 +135,7 @@
 ## 2024-05-18 - Contextual Guidance for Complex Features
 **Learning:** Advanced features (like manual data injection forms) can be intimidating or confusing without immediate inline context, even if tooltips exist. Users shouldn't have to guess the purpose of a section. Furthermore, horizontally grouped inputs (like radio buttons) lack context without a strong unifying label.
 **Action:** Always provide a brief, `.weak()` subtitle or helper text under headings for complex panels, and ensure input groups have a strong unifying label.
+
+## 2026-03-31 - Tooltips for Composite Widgets
+**Learning:** Some `egui` composite widgets (like `global_theme_preference_switch`) do not return a standard `Response` that you can directly chain `.on_hover_text()` to. Attempting to attach a tooltip directly results in a compilation error because they often return `()` or a different type.
+**Action:** Wrap the widget in a `ui.scope(|ui| ...)` block and chain the tooltip to the resulting scope's response: `ui.scope(|ui| { ... }).response.on_hover_text("...")` to successfully provide contextual guidance.
