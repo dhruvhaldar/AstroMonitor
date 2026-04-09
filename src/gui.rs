@@ -1072,7 +1072,10 @@ impl eframe::App for AstroMonitorApp {
 
             // Manual Input Section
             ui.heading("Manual Packet Injection");
+            ui.label(egui::RichText::new("Simulate anomalous conditions by manually injecting custom telemetry packets.").weak());
+            ui.add_space(4.0);
             ui.horizontal(|ui| {
+                ui.label(egui::RichText::new("Target Subsystem:").strong());
                 ui.radio_value(&mut self.input_subsystem, InputSubsystem::Power, "⚡️ Power")
                     .on_hover_ui(|ui| {
                         ui.label("Configure Voltage, Current, and Battery parameters");
