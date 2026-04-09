@@ -374,7 +374,11 @@ impl eframe::App for AstroMonitorApp {
             ui.horizontal(|ui| {
                 ui.heading("Astro Monitor Dashboard");
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    egui::widgets::global_theme_preference_switch(ui);
+                    ui.scope(|ui| {
+                        egui::widgets::global_theme_preference_switch(ui);
+                    })
+                    .response
+                    .on_hover_text("Toggle Light/Dark Theme");
 
                     // Palette UX Enhancement: Help & Shortcuts
                     ui.add(egui::Button::new("?").frame(false))
