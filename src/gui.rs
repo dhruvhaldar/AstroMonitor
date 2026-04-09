@@ -387,8 +387,10 @@ impl eframe::App for AstroMonitorApp {
                                     ui.label(egui::RichText::new("Space").strong());
                                     ui.label("Toggle Pause/Resume");
                                     ui.end_row();
-                                    let modifier = if cfg!(target_os = "macos") { "Cmd" } else { "Ctrl" };
-                                    ui.label(egui::RichText::new(format!("{} + Enter", modifier)).strong());
+                                    // Bolt Optimization: Replace `format!` with static string literals
+                                    // to eliminate redundant heap allocations per frame in the immediate-mode render loop.
+                                    let modifier = if cfg!(target_os = "macos") { "Cmd + Enter" } else { "Ctrl + Enter" };
+                                    ui.label(egui::RichText::new(modifier).strong());
                                     ui.label("Inject Manual Packet");
                                     ui.end_row();
                                 });
@@ -1379,10 +1381,12 @@ impl eframe::App for AstroMonitorApp {
 
             let mut inject_clicked = false;
             ui.add_enabled_ui(is_input_valid, |ui| {
-                let shortcut_mod = if cfg!(target_os = "macos") { "Cmd" } else { "Ctrl" };
+                // Bolt Optimization: Replace `format!` with static string literals
+                // to eliminate redundant heap allocations per frame in the immediate-mode render loop.
+                let shortcut_mod = if cfg!(target_os = "macos") { "Cmd+Enter" } else { "Ctrl+Enter" };
                 let mut btn_response = ui.add_sized(
                     [120.0, 0.0],
-                    egui::Button::new(button_text).shortcut_text(format!("{}+Enter", shortcut_mod)),
+                    egui::Button::new(button_text).shortcut_text(shortcut_mod),
                 );
 
                 if is_input_valid {
