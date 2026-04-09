@@ -131,3 +131,7 @@
 ## 2025-02-12 - OS-Aware Shortcut Formatting and Clean Grid Layouts
 **Learning:** In cross-platform applications, hardcoding keyboard shortcuts as "Ctrl" causes friction for macOS users who expect "Cmd". Additionally, using stacked horizontal layouts for lists of shortcuts looks messy and misaligned.
 **Action:** Always conditionally format modifier keys based on the OS (e.g., `if cfg!(target_os = "macos") { "Cmd" } else { "Ctrl" }`) when displaying shortcut hints. For tabular data like shortcut lists in tooltips, always use `egui::Grid` instead of nested `ui.horizontal()` blocks to ensure clean, consistent alignment.
+
+## 2024-05-18 - Contextual Guidance for Complex Features
+**Learning:** Advanced features (like manual data injection forms) can be intimidating or confusing without immediate inline context, even if tooltips exist. Users shouldn't have to guess the purpose of a section. Furthermore, horizontally grouped inputs (like radio buttons) lack context without a strong unifying label.
+**Action:** Always provide a brief, `.weak()` subtitle or helper text under headings for complex panels, and ensure input groups have a strong unifying label.
