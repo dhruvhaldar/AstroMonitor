@@ -528,6 +528,7 @@ impl eframe::App for AstroMonitorApp {
                     self.alerts.clear();
                     self.alert_counts = [0, 0, 0];
                     self.last_update = Instant::now();
+                    Self::add_log_message(&mut self.logs, format_args!("SECURITY AUDIT: System simulation restarted by operator"));
                 }
                 // Palette UX Enhancement: Display frequency (Hz) alongside delay (ms)
                 if self.simulation_delay_ms != self.cached_delay_ms {
@@ -677,6 +678,7 @@ impl eframe::App for AstroMonitorApp {
                                         self.logs_mutation_counter.wrapping_add(1);
                                     self.log_clear_confirm = None;
                                     self.last_log_clear_time = Some(Instant::now());
+                                    Self::add_log_message(&mut self.logs, format_args!("SECURITY AUDIT: System logs cleared by operator"));
                                     ui.ctx().request_repaint_after(Duration::from_secs(2));
                                 } else if self.last_log_clear_time.is_none()
                                     || current_frame_time.saturating_duration_since(self.last_log_clear_time.unwrap()).as_secs() >= 2
@@ -809,6 +811,7 @@ impl eframe::App for AstroMonitorApp {
                                     self.alerts.clear();
                                     self.alert_counts = [0, 0, 0];
                                     self.last_update = Instant::now();
+                                    Self::add_log_message(&mut self.logs, format_args!("SECURITY AUDIT: System simulation restarted by operator"));
                                 }
                             } else if self.paused
                                 && ui
@@ -951,6 +954,7 @@ impl eframe::App for AstroMonitorApp {
                                     self.alert_counts = [0, 0, 0];
                                     self.alert_clear_confirm = None;
                                     self.last_alert_clear_time = Some(Instant::now());
+                                    Self::add_log_message(&mut self.logs, format_args!("SECURITY AUDIT: System alerts cleared by operator"));
                                     ui.ctx().request_repaint_after(Duration::from_secs(2));
                                 } else if self.last_alert_clear_time.is_none()
                                     || current_frame_time.saturating_duration_since(self.last_alert_clear_time.unwrap()).as_secs() >= 2
@@ -1019,6 +1023,7 @@ impl eframe::App for AstroMonitorApp {
                                     self.alerts.clear();
                                     self.alert_counts = [0, 0, 0];
                                     self.last_update = Instant::now();
+                                    Self::add_log_message(&mut self.logs, format_args!("SECURITY AUDIT: System simulation restarted by operator"));
                                 }
                             } else if self.paused
                                 && ui
