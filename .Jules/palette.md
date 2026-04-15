@@ -139,3 +139,7 @@
 ## 2026-03-31 - Tooltips for Composite Widgets
 **Learning:** Some `egui` composite widgets (like `global_theme_preference_switch`) do not return a standard `Response` that you can directly chain `.on_hover_text()` to. Attempting to attach a tooltip directly results in a compilation error because they often return `()` or a different type.
 **Action:** Wrap the widget in a `ui.scope(|ui| ...)` block and chain the tooltip to the resulting scope's response: `ui.scope(|ui| { ... }).response.on_hover_text("...")` to successfully provide contextual guidance.
+
+## 2026-04-15 - Proportional Font Alignment Anti-Pattern
+**Learning:** Using spaces to manually pad text for alignment fails in modern UIs with proportional fonts, leading to messy and unaligned columns (like in the System Status tooltip).
+**Action:** Always use semantic layout components like `egui::Grid` to ensure crisp, structural alignment of tabular text data.
