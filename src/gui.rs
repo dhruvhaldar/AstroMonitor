@@ -393,7 +393,8 @@ impl eframe::App for AstroMonitorApp {
                                     ui.end_row();
                                     // Bolt Optimization: Replace `format!` with static string literals
                                     // to eliminate redundant heap allocations per frame in the immediate-mode render loop.
-                                    let modifier = if cfg!(target_os = "macos") { "Cmd + Enter" } else { "Ctrl + Enter" };
+                                    // Palette UX Enhancement: Use native MacOS command symbol
+                                    let modifier = if cfg!(target_os = "macos") { "⌘ + Enter" } else { "Ctrl + Enter" };
                                     ui.label(egui::RichText::new(modifier).strong());
                                     ui.label("Inject Manual Packet");
                                     ui.end_row();
@@ -425,18 +426,37 @@ impl eframe::App for AstroMonitorApp {
                     )
                     .on_hover_ui(|ui| {
                         ui.label("Aggregate system status based on active alerts:");
-                        ui.label(
-                            egui::RichText::new(format!("Critical: {}", self.alert_counts[2]))
-                                .color(Self::get_alert_color(&AlertLevel::Critical, ui.visuals().dark_mode)),
-                        );
-                        ui.label(
-                            egui::RichText::new(format!("Warning:  {}", self.alert_counts[1]))
-                                .color(Self::get_alert_color(&AlertLevel::Warning, ui.visuals().dark_mode)),
-                        );
-                        ui.label(
-                            egui::RichText::new(format!("Info:     {}", self.alert_counts[0]))
-                                .color(Self::get_alert_color(&AlertLevel::Info, ui.visuals().dark_mode)),
-                        );
+                        egui::Grid::new("system_status_grid").num_columns(2).show(ui, |ui| {
+                            ui.label(
+                                egui::RichText::new("Critical:")
+                                    .color(Self::get_alert_color(&AlertLevel::Critical, ui.visuals().dark_mode)),
+                            );
+                            ui.label(
+                                egui::RichText::new(format!("{}", self.alert_counts[2]))
+                                    .color(Self::get_alert_color(&AlertLevel::Critical, ui.visuals().dark_mode)),
+                            );
+                            ui.end_row();
+
+                            ui.label(
+                                egui::RichText::new("Warning:")
+                                    .color(Self::get_alert_color(&AlertLevel::Warning, ui.visuals().dark_mode)),
+                            );
+                            ui.label(
+                                egui::RichText::new(format!("{}", self.alert_counts[1]))
+                                    .color(Self::get_alert_color(&AlertLevel::Warning, ui.visuals().dark_mode)),
+                            );
+                            ui.end_row();
+
+                            ui.label(
+                                egui::RichText::new("Info:")
+                                    .color(Self::get_alert_color(&AlertLevel::Info, ui.visuals().dark_mode)),
+                            );
+                            ui.label(
+                                egui::RichText::new(format!("{}", self.alert_counts[0]))
+                                    .color(Self::get_alert_color(&AlertLevel::Info, ui.visuals().dark_mode)),
+                            );
+                            ui.end_row();
+                        });
                     });
                 });
             });
@@ -1392,7 +1412,8 @@ impl eframe::App for AstroMonitorApp {
 
             // Bolt Optimization: Replace `format!` with static string literals
             // to eliminate redundant heap allocations per frame in the immediate-mode render loop.
-            let shortcut_mod = if cfg!(target_os = "macos") { "Cmd+Enter" } else { "Ctrl+Enter" };
+            // Palette UX Enhancement: Use native MacOS command symbol
+            let shortcut_mod = if cfg!(target_os = "macos") { "⌘+Enter" } else { "Ctrl+Enter" };
 
             let mut btn_response = ui.add_enabled_ui(is_input_valid, |ui| {
                 ui.add_sized(
