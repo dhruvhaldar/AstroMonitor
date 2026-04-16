@@ -908,7 +908,8 @@ impl eframe::App for AstroMonitorApp {
                                     };
 
                                     // Ensure fixed height by disabling wrap/truncating
-                                    ui.add(egui::Label::new(colored_text).truncate())
+                                    ui.add(egui::Label::new(colored_text).truncate().sense(egui::Sense::hover()))
+                                        .on_hover_cursor(egui::CursorIcon::ContextMenu)
                                         .on_hover_ui(|ui| {
                                             ui.label(text.as_ref());
                                             ui.separator();
@@ -1078,7 +1079,8 @@ impl eframe::App for AstroMonitorApp {
                                     let color = Self::get_alert_color(&entry.event.level, ui.visuals().dark_mode);
 
                                     // Bolt Optimization: Use RichText with string slice to avoid implicit String cloning per frame
-                                    ui.add(egui::Label::new(egui::RichText::new(entry.text.as_str()).color(color)).truncate())
+                                    ui.add(egui::Label::new(egui::RichText::new(entry.text.as_str()).color(color)).truncate().sense(egui::Sense::hover()))
+                                        .on_hover_cursor(egui::CursorIcon::ContextMenu)
                                         .on_hover_ui(|ui| {
                                             Self::render_alert_tooltip(ui, &entry.event);
                                             ui.separator();
