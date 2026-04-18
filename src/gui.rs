@@ -419,11 +419,15 @@ impl eframe::App for AstroMonitorApp {
                     } else {
                         ("System Nominal 🟢️", Self::get_nominal_color(dark_mode))
                     };
-                    ui.label(
-                        egui::RichText::new(status_text)
-                            .color(status_color)
-                            .strong(),
+                    ui.add(
+                        egui::Label::new(
+                            egui::RichText::new(status_text)
+                                .color(status_color)
+                                .strong(),
+                        )
+                        .sense(egui::Sense::hover()),
                     )
+                    .on_hover_cursor(egui::CursorIcon::Help)
                     .on_hover_ui(|ui| {
                         ui.label("Aggregate system status based on active alerts:");
                         egui::Grid::new("system_status_grid").num_columns(2).show(ui, |ui| {
@@ -1232,9 +1236,11 @@ impl eframe::App for AstroMonitorApp {
                         if self.input_battery < self.monitor.min_battery_level() {
                             // Bolt Optimization: Use colored_label to avoid RichText allocation
                             let color = Self::get_alert_color(&AlertLevel::Critical, ui.visuals().dark_mode);
-                            ui.colored_label(color, "⚠️").on_hover_ui(|ui| {
-                                ui.label(&self.cached_battery_tooltip);
-                            });
+                            ui.add(egui::Label::new(egui::RichText::new("⚠️").color(color)).sense(egui::Sense::hover()))
+                                .on_hover_cursor(egui::CursorIcon::Help)
+                                .on_hover_ui(|ui| {
+                                    ui.label(&self.cached_battery_tooltip);
+                                });
                         }
                     });
                 }
@@ -1278,13 +1284,15 @@ impl eframe::App for AstroMonitorApp {
                         if self.input_temp > self.monitor.max_temp_celsius() {
                             // Bolt Optimization: Use colored_label to avoid RichText allocation
                             let color = Self::get_alert_color(&AlertLevel::Warning, ui.visuals().dark_mode);
-                            ui.colored_label(color, "⚠️")
+                            ui.add(egui::Label::new(egui::RichText::new("⚠️").color(color)).sense(egui::Sense::hover()))
+                                .on_hover_cursor(egui::CursorIcon::Help)
                                 .on_hover_ui(|ui| {
                                     ui.label(&self.cached_temp_tooltip);
                                 });
                         } else if self.input_temp < -273.15 {
                             let color = Self::get_alert_color(&AlertLevel::Critical, ui.visuals().dark_mode);
-                            ui.colored_label(color, "⚠️")
+                            ui.add(egui::Label::new(egui::RichText::new("⚠️").color(color)).sense(egui::Sense::hover()))
+                                .on_hover_cursor(egui::CursorIcon::Help)
                                 .on_hover_ui(|ui| {
                                     ui.label("Below absolute zero!");
                                 });
@@ -1338,7 +1346,8 @@ impl eframe::App for AstroMonitorApp {
                         if self.input_confidence < self.monitor.min_star_confidence() {
                             // Bolt Optimization: Use colored_label to avoid RichText allocation
                             let color = Self::get_alert_color(&AlertLevel::Info, ui.visuals().dark_mode);
-                            ui.colored_label(color, "ℹ️")
+                            ui.add(egui::Label::new(egui::RichText::new("ℹ️").color(color)).sense(egui::Sense::hover()))
+                                .on_hover_cursor(egui::CursorIcon::Help)
                                 .on_hover_ui(|ui| {
                                     ui.label(&self.cached_star_tooltip);
                                 });
@@ -1369,7 +1378,8 @@ impl eframe::App for AstroMonitorApp {
                             let _ = write!(&mut self.cached_target_len_text, "{}/{}", len, limit);
                         }
 
-                        ui.label(egui::RichText::new(self.cached_target_len_text.as_str()).color(color))
+                        ui.add(egui::Label::new(egui::RichText::new(self.cached_target_len_text.as_str()).color(color)).sense(egui::Sense::hover()))
+                            .on_hover_cursor(egui::CursorIcon::Help)
                             .on_hover_ui(|ui| {
                                 ui.label("Protocol limit: 255 bytes.");
                                 ui.label("Input exceeding this cannot be injected.");
@@ -1378,7 +1388,8 @@ impl eframe::App for AstroMonitorApp {
                         // Palette UX Enhancement: Inline Security Warning
                         if is_malicious_csv_payload(&self.input_target) {
                             let warn_color = Self::get_alert_color(&AlertLevel::Warning, ui.visuals().dark_mode);
-                            ui.colored_label(warn_color, "⚠️")
+                            ui.add(egui::Label::new(egui::RichText::new("⚠️").color(warn_color)).sense(egui::Sense::hover()))
+                                .on_hover_cursor(egui::CursorIcon::Help)
                                 .on_hover_ui(|ui| {
                                     ui.label(
                                         egui::RichText::new("Sanitization Active")
