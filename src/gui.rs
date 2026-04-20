@@ -1232,9 +1232,11 @@ impl eframe::App for AstroMonitorApp {
                         if self.input_battery < self.monitor.min_battery_level() {
                             // Bolt Optimization: Use colored_label to avoid RichText allocation
                             let color = Self::get_alert_color(&AlertLevel::Critical, ui.visuals().dark_mode);
-                            ui.colored_label(color, "⚠️").on_hover_ui(|ui| {
-                                ui.label(&self.cached_battery_tooltip);
-                            });
+                            ui.colored_label(color, "⚠️")
+                                .on_hover_cursor(egui::CursorIcon::Help)
+                                .on_hover_ui(|ui| {
+                                    ui.label(&self.cached_battery_tooltip);
+                                });
                         }
                     });
                 }
@@ -1279,12 +1281,14 @@ impl eframe::App for AstroMonitorApp {
                             // Bolt Optimization: Use colored_label to avoid RichText allocation
                             let color = Self::get_alert_color(&AlertLevel::Warning, ui.visuals().dark_mode);
                             ui.colored_label(color, "⚠️")
+                                .on_hover_cursor(egui::CursorIcon::Help)
                                 .on_hover_ui(|ui| {
                                     ui.label(&self.cached_temp_tooltip);
                                 });
                         } else if self.input_temp < -273.15 {
                             let color = Self::get_alert_color(&AlertLevel::Critical, ui.visuals().dark_mode);
                             ui.colored_label(color, "⚠️")
+                                .on_hover_cursor(egui::CursorIcon::Help)
                                 .on_hover_ui(|ui| {
                                     ui.label("Below absolute zero!");
                                 });
@@ -1339,6 +1343,7 @@ impl eframe::App for AstroMonitorApp {
                             // Bolt Optimization: Use colored_label to avoid RichText allocation
                             let color = Self::get_alert_color(&AlertLevel::Info, ui.visuals().dark_mode);
                             ui.colored_label(color, "ℹ️")
+                                .on_hover_cursor(egui::CursorIcon::Help)
                                 .on_hover_ui(|ui| {
                                     ui.label(&self.cached_star_tooltip);
                                 });
@@ -1379,6 +1384,7 @@ impl eframe::App for AstroMonitorApp {
                         if is_malicious_csv_payload(&self.input_target) {
                             let warn_color = Self::get_alert_color(&AlertLevel::Warning, ui.visuals().dark_mode);
                             ui.colored_label(warn_color, "⚠️")
+                                .on_hover_cursor(egui::CursorIcon::Help)
                                 .on_hover_ui(|ui| {
                                     ui.label(
                                         egui::RichText::new("Sanitization Active")
