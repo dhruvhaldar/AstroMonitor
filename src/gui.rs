@@ -1754,6 +1754,9 @@ impl AstroMonitorApp {
             info!("{}", buffer);
         }
 
+        if logs.len() >= MAX_LOGS {
+            logs.pop_front();
+        }
         logs.push_back(LogEntry::Message(buffer, is_error));
     }
 
@@ -1794,6 +1797,9 @@ impl AstroMonitorApp {
                         &packet.payload,
                     );
                     info!("{}", packet_text);
+                    if logs.len() >= MAX_LOGS {
+                        logs.pop_front();
+                    }
                     logs.push_back(LogEntry::Packet(packet_text));
                 }
 
@@ -1827,6 +1833,9 @@ impl AstroMonitorApp {
                         AlertLevel::Info => info!("{}", alert_text),
                     }
 
+                    if logs.len() >= MAX_LOGS {
+                        logs.pop_front();
+                    }
                     logs.push_back(LogEntry::Alert(alert_text, event.level));
 
                     // Bolt Optimization: Store MonitorEvent directly to avoid string formatting and allocation
@@ -1912,6 +1921,9 @@ impl AstroMonitorApp {
                     warn!("{}", alert_text);
 
                     // Bolt Optimization: Move alert_text directly instead of cloning to eliminate redundant heap allocations per parsing alert.
+                    if logs.len() >= MAX_LOGS {
+                        logs.pop_front();
+                    }
                     logs.push_back(LogEntry::Alert(alert_text, event.level));
 
                     if alerts.len() >= MAX_ALERTS {
