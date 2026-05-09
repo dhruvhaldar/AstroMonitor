@@ -5,3 +5,7 @@
 ## 2025-03-02 - [Avoid String allocations in `format!` for static literals in immediate mode UI]
 **Learning:** `format!("...{}", ...)` inside an immediate-mode render loop evaluates every frame and allocates a new `String` on the heap, even if the resulting string is relatively static.
 **Action:** Lift the logic into conditional variables storing complete static `&str` literals instead of interpolating inside `format!()` macros whenever possible.
+
+## 2024-05-09 - Avoid per-frame `format!` allocations for static UI elements
+**Learning:** `format!("{} {}", icon, title)` inside a UI rendering loop like `render_alert_tooltip` allocates a new `String` on the heap every frame when the tooltip is active, despite both variables effectively resolving to static string combinations.
+**Action:** Lift the logic to map directly to combined static string literals (`&str`) within a `match` block instead of separating the words and using `format!()` macros. This completely eliminates the heap allocation on this hot path.
