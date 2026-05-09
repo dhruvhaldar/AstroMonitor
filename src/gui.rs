@@ -1683,13 +1683,13 @@ impl AstroMonitorApp {
     fn render_alert_tooltip(ui: &mut egui::Ui, event: &MonitorEvent) {
         let dark_mode = ui.visuals().dark_mode;
         let color = Self::get_alert_color(&event.level, dark_mode);
-        let (title, icon) = match event.level {
-            AlertLevel::Critical => ("Critical Alert", "🔴️"),
-            AlertLevel::Warning => ("System Warning", "⚠️"),
-            AlertLevel::Info => ("System Info", "ℹ️"),
+        let title_text = match event.level {
+            AlertLevel::Critical => "🔴️ Critical Alert",
+            AlertLevel::Warning => "⚠️ System Warning",
+            AlertLevel::Info => "ℹ️ System Info",
         };
 
-        ui.heading(egui::RichText::new(format!("{} {}", icon, title)).color(color));
+        ui.heading(egui::RichText::new(title_text).color(color));
         ui.separator();
 
         match &event.condition {
