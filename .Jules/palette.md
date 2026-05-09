@@ -4,3 +4,6 @@
 ## 2024-05-17 - Colored Label Hover Cursor
 **Learning:** `ui.colored_label` in egui internally generates a `Response`, but trying to attach `.sense()` or `.on_hover_cursor()` to the response without enabling hover sensing on the widget *itself* fails to change the cursor. You cannot simply chain `.on_hover_cursor(egui::CursorIcon::Help)` onto `ui.colored_label(...)`.
 **Action:** When you need a colored label to act as an interactive tooltip trigger with a custom cursor, avoid the `ui.colored_label(...)` shorthand. Instead, manually construct the label using `ui.add(egui::Label::new(egui::RichText::new("...").color(...)).sense(egui::Sense::hover()))`, which allows applying `.on_hover_cursor(egui::CursorIcon::Help)`.
+## 2024-05-20 - Egui Grid for Clean Tabular Layouts
+**Learning:** In `egui` tooltips or panels, attempting to render tabular data (like key-value pairs) by stacking ui.horizontal() blocks or space-padding text results in misaligned, jagged columns, especially when using proportional fonts.
+**Action:** Always use `egui::Grid::new("id").num_columns(n)` when rendering tabular data to ensure clean, crisp alignment. If a row requires longer descriptive text (like an 'Action:' instruction), render it *outside* of the grid to prevent awkward column stretching.

@@ -1692,44 +1692,52 @@ impl AstroMonitorApp {
         ui.heading(egui::RichText::new(title_text).color(color));
         ui.separator();
 
-        match &event.condition {
-            AlertCondition::LowBattery { value, threshold } => {
-                ui.label(format!("Battery Level: {:.1}%", value));
-                ui.label(format!("Threshold: < {:.1}%", threshold));
-                ui.label(
-                    egui::RichText::new("Action: Initiate power saving mode.")
-                        .weak()
-                        .italics(),
-                );
-            }
-            AlertCondition::HighTemperature { value, threshold } => {
-                ui.label(format!("Temperature: {:.1}°C", value));
-                ui.label(format!("Threshold: > {:.1}°C", threshold));
-                ui.label(
-                    egui::RichText::new("Action: Check active cooling system.")
-                        .weak()
-                        .italics(),
-                );
-            }
-            AlertCondition::LowStarConfidence { value, threshold } => {
-                ui.label(format!("Confidence: {:.2}", value));
-                ui.label(format!("Threshold: < {:.2}", threshold));
-                ui.label(
-                    egui::RichText::new("Action: Recalibrate star tracker.")
-                        .weak()
-                        .italics(),
-                );
-            }
-            AlertCondition::SensorFailure { subsystem } => {
-                ui.label(format!("Subsystem: {}", subsystem));
-                ui.label("Status: Invalid Data / Sensor Failure");
-                ui.label(
-                    egui::RichText::new("Action: Run diagnostics immediately.")
-                        .weak()
-                        .italics(),
-                );
-            }
-        }
+        egui::Grid::new("alert_details_grid")
+            .num_columns(2)
+            .show(ui, |ui| match &event.condition {
+                AlertCondition::LowBattery { value, threshold } => {
+                    ui.label("Battery Level:");
+                    ui.label(format!("{:.1}%", value));
+                    ui.end_row();
+                    ui.label("Threshold:");
+                    ui.label(format!("< {:.1}%", threshold));
+                    ui.end_row();
+                }
+                AlertCondition::HighTemperature { value, threshold } => {
+                    ui.label("Temperature:");
+                    ui.label(format!("{:.1}°C", value));
+                    ui.end_row();
+                    ui.label("Threshold:");
+                    ui.label(format!("> {:.1}°C", threshold));
+                    ui.end_row();
+                }
+                AlertCondition::LowStarConfidence { value, threshold } => {
+                    ui.label("Confidence:");
+                    ui.label(format!("{:.2}", value));
+                    ui.end_row();
+                    ui.label("Threshold:");
+                    ui.label(format!("< {:.2}", threshold));
+                    ui.end_row();
+                }
+                AlertCondition::SensorFailure { subsystem } => {
+                    ui.label("Subsystem:");
+                    ui.label(subsystem.to_string());
+                    ui.end_row();
+                    ui.label("Status:");
+                    ui.label("Invalid Data / Sensor Failure");
+                    ui.end_row();
+                }
+            });
+
+        ui.add_space(4.0);
+
+        let action_text = match &event.condition {
+            AlertCondition::LowBattery { .. } => "Action: Initiate power saving mode.",
+            AlertCondition::HighTemperature { .. } => "Action: Check active cooling system.",
+            AlertCondition::LowStarConfidence { .. } => "Action: Recalibrate star tracker.",
+            AlertCondition::SensorFailure { .. } => "Action: Run diagnostics immediately.",
+        };
+        ui.label(egui::RichText::new(action_text).weak().italics());
 
         ui.separator();
         ui.horizontal(|ui| {
