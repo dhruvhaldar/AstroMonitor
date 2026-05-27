@@ -419,11 +419,15 @@ impl eframe::App for AstroMonitorApp {
                     } else {
                         ("System Nominal 🟢️", Self::get_nominal_color(dark_mode))
                     };
-                    ui.label(
-                        egui::RichText::new(status_text)
-                            .color(status_color)
-                            .strong(),
+                    ui.add(
+                        egui::Label::new(
+                            egui::RichText::new(status_text)
+                                .color(status_color)
+                                .strong(),
+                        )
+                        .sense(egui::Sense::hover()),
                     )
+                    .on_hover_cursor(egui::CursorIcon::Help)
                     .on_hover_ui(|ui| {
                         ui.label("Aggregate system status based on active alerts:");
                         egui::Grid::new("system_status_grid").num_columns(2).show(ui, |ui| {
@@ -1374,8 +1378,15 @@ impl eframe::App for AstroMonitorApp {
                             let _ = write!(&mut self.cached_target_len_text, "{}/{}", len, limit);
                         }
 
-                        ui.label(egui::RichText::new(self.cached_target_len_text.as_str()).color(color))
-                            .on_hover_ui(|ui| {
+                        ui.add(
+                            egui::Label::new(
+                                egui::RichText::new(self.cached_target_len_text.as_str())
+                                    .color(color),
+                            )
+                            .sense(egui::Sense::hover()),
+                        )
+                        .on_hover_cursor(egui::CursorIcon::Help)
+                        .on_hover_ui(|ui| {
                                 ui.label("Protocol limit: 255 bytes.");
                                 ui.label("Input exceeding this cannot be injected.");
                             });

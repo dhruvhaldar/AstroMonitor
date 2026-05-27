@@ -7,3 +7,7 @@
 ## 2024-05-20 - Egui Grid for Clean Tabular Layouts
 **Learning:** In `egui` tooltips or panels, attempting to render tabular data (like key-value pairs) by stacking ui.horizontal() blocks or space-padding text results in misaligned, jagged columns, especially when using proportional fonts.
 **Action:** Always use `egui::Grid::new("id").num_columns(n)` when rendering tabular data to ensure clean, crisp alignment. If a row requires longer descriptive text (like an 'Action:' instruction), render it *outside* of the grid to prevent awkward column stretching.
+
+## 2024-05-24 - Egui Colored Label Tooltip Discoverability
+**Learning:** In `egui`, `ui.label()` and colored shorthand texts do not properly support hover cursor changes by default, making contextual tooltips undiscoverable, especially for text-only elements acting as status indicators or counters.
+**Action:** To allow custom cursors (like `CursorIcon::Help`) on textual status elements, use the explicit label constructor with hover sensing enabled: `ui.add(egui::Label::new(...).sense(egui::Sense::hover())).on_hover_cursor(egui::CursorIcon::Help)` instead of relying solely on `.on_hover_ui()`.
