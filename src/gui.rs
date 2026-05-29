@@ -227,6 +227,9 @@ pub struct AstroMonitorApp {
     cached_alerts_count: usize,
     cached_target_len: usize,
     cached_target_limit: usize,
+
+    cached_alert_counts: [usize; 3],
+    cached_alert_counts_text: [String; 3],
 }
 
 impl Default for AstroMonitorApp {
@@ -297,6 +300,9 @@ impl Default for AstroMonitorApp {
             cached_alerts_count: usize::MAX,
             cached_target_len: usize::MAX,
             cached_target_limit: usize::MAX,
+
+            cached_alert_counts: [usize::MAX; 3],
+            cached_alert_counts_text: [String::new(), String::new(), String::new()],
 
             // Default input values
             input_subsystem: InputSubsystem::Power,
@@ -419,6 +425,15 @@ impl eframe::App for AstroMonitorApp {
                     } else {
                         ("System Nominal 🟢️", Self::get_nominal_color(dark_mode))
                     };
+                    // Bolt Optimization: Pre-format alert counts text to avoid allocations in render loop
+                    for i in 0..3 {
+                        if self.alert_counts[i] != self.cached_alert_counts[i] {
+                            self.cached_alert_counts[i] = self.alert_counts[i];
+                            self.cached_alert_counts_text[i].clear();
+                            let _ = write!(&mut self.cached_alert_counts_text[i], "{}", self.alert_counts[i]);
+                        }
+                    }
+
                     ui.add(
                         egui::Label::new(
                             egui::RichText::new(status_text)
@@ -436,7 +451,7 @@ impl eframe::App for AstroMonitorApp {
                                     .color(Self::get_alert_color(&AlertLevel::Critical, ui.visuals().dark_mode)),
                             );
                             ui.label(
-                                egui::RichText::new(format!("{}", self.alert_counts[2]))
+                                egui::RichText::new(self.cached_alert_counts_text[2].as_str())
                                     .color(Self::get_alert_color(&AlertLevel::Critical, ui.visuals().dark_mode)),
                             );
                             ui.end_row();
@@ -446,7 +461,7 @@ impl eframe::App for AstroMonitorApp {
                                     .color(Self::get_alert_color(&AlertLevel::Warning, ui.visuals().dark_mode)),
                             );
                             ui.label(
-                                egui::RichText::new(format!("{}", self.alert_counts[1]))
+                                egui::RichText::new(self.cached_alert_counts_text[1].as_str())
                                     .color(Self::get_alert_color(&AlertLevel::Warning, ui.visuals().dark_mode)),
                             );
                             ui.end_row();
@@ -456,7 +471,7 @@ impl eframe::App for AstroMonitorApp {
                                     .color(Self::get_alert_color(&AlertLevel::Info, ui.visuals().dark_mode)),
                             );
                             ui.label(
-                                egui::RichText::new(format!("{}", self.alert_counts[0]))
+                                egui::RichText::new(self.cached_alert_counts_text[0].as_str())
                                     .color(Self::get_alert_color(&AlertLevel::Info, ui.visuals().dark_mode)),
                             );
                             ui.end_row();
