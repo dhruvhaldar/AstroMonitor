@@ -9,3 +9,7 @@
 ## 2024-05-09 - Avoid per-frame `format!` allocations for static UI elements
 **Learning:** `format!("{} {}", icon, title)` inside a UI rendering loop like `render_alert_tooltip` allocates a new `String` on the heap every frame when the tooltip is active, despite both variables effectively resolving to static string combinations.
 **Action:** Lift the logic to map directly to combined static string literals (`&str`) within a `match` block instead of separating the words and using `format!()` macros. This completely eliminates the heap allocation on this hot path.
+
+## 2025-05-29 - Pre-format dynamic integer arrays to prevent `format!` allocations
+**Learning:** Formatting integer arrays dynamically using `format!("{}", self.alert_counts[i])` within an immediate-mode UI render loop will allocate 3 new strings per frame when rendering UI components that use these counts.
+**Action:** Add parallel string array caches (`cached_alert_counts_text`) that are updated only when the underlying `alert_counts` change, effectively completely eliminating per-frame allocations.
