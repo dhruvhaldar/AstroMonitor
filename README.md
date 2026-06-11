@@ -7,7 +7,7 @@
 
 The application features a **Graphical User Interface (GUI)** for real-time visualization, simulation control, and manual data injection.
 
-![Dashboard Screenshot](screenshots/dashboard.png)
+![Dashboard Screenshot](screenshots/astro_monitor_rPqrDfppnM.png)
 
 ## Features
 
