@@ -28,6 +28,9 @@ The application features a **Graphical User Interface (GUI)** for real-time visu
 - [Rust](https://www.rust-lang.org/tools/install) (latest stable version)
 - Cargo (comes with Rust)
 
+**Windows Requirements:**
+On Windows, you need the MSVC toolchain. You can install it by installing the **Build Tools for Visual Studio** (or Visual Studio itself) and selecting the **Desktop development with C++** workload during installation.
+
 **Linux Requirements:**
 On Linux, you need to install the following development libraries for the GUI:
 
