@@ -1373,7 +1373,22 @@ impl eframe::App for AstroMonitorApp {
                                 .hint_text("e.g. Sirius")
                                 .char_limit(255),
                         )
-                        .on_hover_text("Target ID (max 255 characters)");
+                        .on_hover_text("Target ID (max 255 bytes)");
+
+                        // Palette UX Enhancement: Clear Target Button
+                        let mut clear_btn = ui.add_enabled_ui(!self.input_target.is_empty(), |ui| {
+                            ui.add_sized([24.0, 0.0], egui::Button::new("✖"))
+                        }).inner;
+
+                        if !self.input_target.is_empty() {
+                            clear_btn = clear_btn.on_hover_text("Clear Target ID");
+                        } else {
+                            clear_btn = clear_btn.on_disabled_hover_text("Target ID is already empty");
+                        }
+
+                        if clear_btn.clicked() {
+                            self.input_target.clear();
+                        }
 
                         // Palette UX Enhancement: Byte Counter
                         let len = self.input_target.len();
