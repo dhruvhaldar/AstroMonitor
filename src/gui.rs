@@ -1377,7 +1377,7 @@ impl eframe::App for AstroMonitorApp {
 
                         // Palette UX Enhancement: Clear Target Button
                         let mut clear_btn = ui.add_enabled_ui(!self.input_target.is_empty(), |ui| {
-                            ui.add_sized([24.0, 0.0], egui::Button::new("✖"))
+                            ui.add_sized([24.0, 0.0], egui::Button::new("✖️"))
                         }).inner;
 
                         if !self.input_target.is_empty() {
