@@ -13,3 +13,7 @@
 ## 2025-05-29 - Pre-format dynamic integer arrays to prevent `format!` allocations
 **Learning:** Formatting integer arrays dynamically using `format!("{}", self.alert_counts[i])` within an immediate-mode UI render loop will allocate 3 new strings per frame when rendering UI components that use these counts.
 **Action:** Add parallel string array caches (`cached_alert_counts_text`) that are updated only when the underlying `alert_counts` change, effectively completely eliminating per-frame allocations.
+
+## 2025-10-18 - Fix memory/cache miss on `get_temp` in egui render loops
+**Learning:** In egui, values accessed from the temporary cache via `ui.ctx().data(|d| d.get_temp(...))` are dropped at the end of the frame unless they are explicitly re-inserted using `insert_temp` during the same frame. Returning early on a cache hit without re-inserting causes cache flapping (parsing/allocating every alternate frame).
+**Action:** Always re-insert values accessed from egui's temporary cache using `ui.ctx().data_mut(|d| d.insert_temp(id, cached.clone()))` if you return early to ensure they persist for subsequent frames.

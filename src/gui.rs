@@ -1617,6 +1617,9 @@ impl AstroMonitorApp {
                 // egui::util::cache::Memory::data behaves like an LRU cache: data not accessed for a frame is dropped.
                 // This is perfect for virtualized lists where only visible items are accessed.
                 if let Some(cached) = ui.ctx().data(|d| d.get_temp::<Arc<String>>(id)) {
+                    // Bolt Optimization: `egui` temporary data is dropped if not re-inserted every frame.
+                    // Re-insert the accessed value to keep it alive in the cache.
+                    ui.ctx().data_mut(|d| d.insert_temp(id, cached.clone()));
                     return ResolvedLogText::Shared(cached);
                 }
 
@@ -1762,7 +1765,7 @@ impl AstroMonitorApp {
                 }
                 AlertCondition::SensorFailure { subsystem } => {
                     ui.label("Subsystem:");
-                    ui.label(subsystem.to_string());
+                    ui.label(*subsystem);
                     ui.end_row();
                     ui.label("Status:");
                     ui.label("Invalid Data / Sensor Failure");
