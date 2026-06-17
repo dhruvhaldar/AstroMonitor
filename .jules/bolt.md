@@ -17,3 +17,7 @@
 ## 2025-10-18 - Fix memory/cache miss on `get_temp` in egui render loops
 **Learning:** In egui, values accessed from the temporary cache via `ui.ctx().data(|d| d.get_temp(...))` are dropped at the end of the frame unless they are explicitly re-inserted using `insert_temp` during the same frame. Returning early on a cache hit without re-inserting causes cache flapping (parsing/allocating every alternate frame).
 **Action:** Always re-insert values accessed from egui's temporary cache using `ui.ctx().data_mut(|d| d.insert_temp(id, cached.clone()))` if you return early to ensure they persist for subsequent frames.
+
+## 2025-06-25 - Replace `is_finite` + `contains` with simple boolean bound checks
+**Learning:** Checking ranges for floating point numbers using `!val.is_finite() || !(MIN..=MAX).contains(&val)` is slightly slower due to the overhead of trait method calls and bounds checks. A direct simple negated range check like `!(val >= MIN && val <= MAX)` naturally evaluates to `true` (triggering an alert) for NaNs and out of bounds values because any comparison with `NaN` evaluates to `false`.
+**Action:** Replace `is_finite` + `contains` bounds checks with combined direct `!(val >= MIN && val <= MAX)` expressions.
