@@ -123,12 +123,11 @@ impl Monitor {
         self.min_battery_level
     }
 
+    #[allow(clippy::manual_range_contains)]
     pub fn set_min_battery_level(&mut self, val: f64) -> Result<(), &'static str> {
-        if !val.is_finite() {
-            return Err("Battery level threshold must be finite");
-        }
-        if !(0.0..=100.0).contains(&val) {
-            return Err("Battery level threshold must be between 0.0 and 100.0");
+        // Bolt Optimization: Replace is_finite and contains with a single negated range check
+        if !(val >= 0.0 && val <= 100.0) {
+            return Err("Battery level threshold must be finite and between 0.0 and 100.0");
         }
         self.min_battery_level = val;
         Ok(())
@@ -138,12 +137,12 @@ impl Monitor {
         self.max_temp_celsius
     }
 
+    #[allow(clippy::manual_range_contains)]
     pub fn set_max_temp_celsius(&mut self, val: f64) -> Result<(), &'static str> {
-        if !val.is_finite() {
-            return Err("Temperature threshold must be finite");
-        }
-        if val < -273.15 {
-            return Err("Temperature threshold cannot be below absolute zero");
+        // Bolt Optimization: Replace is_finite and < with a single negated range check.
+        // If val is NaN, >= evaluates to false, so !(val >= -273.15 && val <= f64::MAX) is true.
+        if !(val >= -273.15 && val <= f64::MAX) {
+            return Err("Temperature threshold must be finite and cannot be below absolute zero");
         }
         self.max_temp_celsius = val;
         Ok(())
@@ -153,12 +152,11 @@ impl Monitor {
         self.min_star_confidence
     }
 
+    #[allow(clippy::manual_range_contains)]
     pub fn set_min_star_confidence(&mut self, val: f64) -> Result<(), &'static str> {
-        if !val.is_finite() {
-            return Err("Star confidence threshold must be finite");
-        }
-        if !(0.0..=1.0).contains(&val) {
-            return Err("Star confidence threshold must be between 0.0 and 1.0");
+        // Bolt Optimization: Replace is_finite and contains with a single negated range check
+        if !(val >= 0.0 && val <= 1.0) {
+            return Err("Star confidence threshold must be finite and between 0.0 and 1.0");
         }
         self.min_star_confidence = val;
         Ok(())
@@ -167,26 +165,13 @@ impl Monitor {
     pub fn check(&self, packet: &TelemetryPacket<'_>) -> Option<MonitorEvent> {
         match &packet.payload {
             TelemetryPayload::Power(data) => {
-                if !data.voltage.is_finite()
-                    || !data.current.is_finite()
-                    || !data.battery_level.is_finite()
-                {
-                    return Some(MonitorEvent {
-                        level: AlertLevel::Critical,
-                        condition: AlertCondition::SensorFailure { subsystem: "Power" },
-                        timestamp: packet.timestamp,
-                    });
-                }
-                // Security Check: Validate Voltage and Current (non-negative)
-                if data.voltage < 0.0 || data.current < 0.0 {
-                    return Some(MonitorEvent {
-                        level: AlertLevel::Critical,
-                        condition: AlertCondition::SensorFailure { subsystem: "Power" },
-                        timestamp: packet.timestamp,
-                    });
-                }
-                // Security Check: Validate Battery Level Range (0.0 - 100.0)
-                if !(0.0..=100.0).contains(&data.battery_level) {
+                // Bolt Optimization: Combine is_finite checks, non-negative checks, and battery bounds
+                // into direct boolean expressions. This avoids `contains` overhead and multiple checks.
+                #[allow(clippy::nonminimal_bool, clippy::manual_range_contains)]
+                let is_invalid = !(data.voltage >= 0.0 && data.voltage <= f64::MAX)
+                    || !(data.current >= 0.0 && data.current <= f64::MAX)
+                    || !(data.battery_level >= 0.0 && data.battery_level <= 100.0);
+                if is_invalid {
                     return Some(MonitorEvent {
                         level: AlertLevel::Critical,
                         condition: AlertCondition::SensorFailure { subsystem: "Power" },
@@ -205,17 +190,10 @@ impl Monitor {
                 }
             }
             TelemetryPayload::Thermal(data) => {
-                if !data.temp_celsius.is_finite() {
-                    return Some(MonitorEvent {
-                        level: AlertLevel::Critical,
-                        condition: AlertCondition::SensorFailure {
-                            subsystem: "Thermal",
-                        },
-                        timestamp: packet.timestamp,
-                    });
-                }
-                // Security Check: Validate Physical Temperature Limit (Absolute Zero)
-                if data.temp_celsius < -273.15 {
+                // Bolt Optimization: Combine is_finite check and physical temperature limit check.
+                #[allow(clippy::manual_range_contains)]
+                let is_invalid = !(data.temp_celsius >= -273.15 && data.temp_celsius <= f64::MAX);
+                if is_invalid {
                     return Some(MonitorEvent {
                         level: AlertLevel::Critical,
                         condition: AlertCondition::SensorFailure {
@@ -236,33 +214,14 @@ impl Monitor {
                 }
             }
             TelemetryPayload::StarTracker(data) => {
-                if !data.confidence.is_finite()
-                    || !data.coordinates.right_ascension.is_finite()
-                    || !data.coordinates.declination.is_finite()
-                {
-                    return Some(MonitorEvent {
-                        level: AlertLevel::Critical,
-                        condition: AlertCondition::SensorFailure {
-                            subsystem: "StarTracker",
-                        },
-                        timestamp: packet.timestamp,
-                    });
-                }
-                // Security Check: Validate Confidence Range (0.0 - 1.0)
-                // Security Check: Validate Celestial Coordinates
-                if !(0.0..=360.0).contains(&data.coordinates.right_ascension)
-                    || !(-90.0..=90.0).contains(&data.coordinates.declination)
-                {
-                    return Some(MonitorEvent {
-                        level: AlertLevel::Critical,
-                        condition: AlertCondition::SensorFailure {
-                            subsystem: "StarTracker",
-                        },
-                        timestamp: packet.timestamp,
-                    });
-                }
-
-                if !(0.0..=1.0).contains(&data.confidence) {
+                // Bolt Optimization: Combine is_finite, range, and bounds checks into direct boolean logic.
+                #[allow(clippy::nonminimal_bool, clippy::manual_range_contains)]
+                let is_invalid = !(data.confidence >= 0.0 && data.confidence <= 1.0)
+                    || !(data.coordinates.right_ascension >= 0.0
+                        && data.coordinates.right_ascension <= 360.0)
+                    || !(data.coordinates.declination >= -90.0
+                        && data.coordinates.declination <= 90.0);
+                if is_invalid {
                     return Some(MonitorEvent {
                         level: AlertLevel::Critical,
                         condition: AlertCondition::SensorFailure {
