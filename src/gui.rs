@@ -388,6 +388,7 @@ impl eframe::App for AstroMonitorApp {
 
                     // Palette UX Enhancement: Help & Shortcuts
                     ui.add(egui::Button::new("?").frame(false))
+                        .on_hover_cursor(egui::CursorIcon::Help)
                         .on_hover_ui(|ui| {
                             ui.heading("Help & Shortcuts");
                             egui::Grid::new("shortcuts_grid")
