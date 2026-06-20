@@ -1151,6 +1151,33 @@ impl eframe::App for AstroMonitorApp {
             ui.horizontal(|ui| {
                 ui.label(egui::RichText::new("Presets:").strong());
 
+                let is_nominal = match self.input_subsystem {
+                    InputSubsystem::Power => {
+                        self.input_voltage == 28.0
+                            && self.input_current == 2.5
+                            && self.input_battery == 95.0
+                    }
+                    InputSubsystem::Thermal => self.input_temp == 25.0,
+                    InputSubsystem::StarTracker => {
+                        self.input_ra == 0.0
+                            && self.input_dec == 0.0
+                            && self.input_confidence == 1.0
+                            && self.input_target == "Sirius"
+                    }
+                };
+
+                let is_alert = match self.input_subsystem {
+                    InputSubsystem::Power => {
+                        self.input_battery == (self.monitor.min_battery_level() - 5.0).max(0.0)
+                    }
+                    InputSubsystem::Thermal => {
+                        self.input_temp == self.monitor.max_temp_celsius() + 5.0
+                    }
+                    InputSubsystem::StarTracker => {
+                        self.input_confidence == (self.monitor.min_star_confidence() - 0.1).max(0.0)
+                    }
+                };
+
                 let (nom_text, nom_tooltip) = if let Some(_t) = self
                     .last_nominal_apply_time
                     .filter(|t| current_frame_time.saturating_duration_since(*t).as_secs() < 1)
@@ -1160,13 +1187,19 @@ impl eframe::App for AstroMonitorApp {
                     ("Nominal 🟢️", "Set inputs to safe, nominal values")
                 };
 
-                if ui
-                    .add_sized([110.0, 0.0], egui::Button::new(nom_text))
-                    .on_hover_ui(|ui| {
+                let mut nom_btn = ui.add_enabled_ui(!is_nominal, |ui| {
+                    ui.add_sized([110.0, 0.0], egui::Button::new(nom_text))
+                }).inner;
+
+                if !is_nominal {
+                    nom_btn = nom_btn.on_hover_ui(|ui| {
                         ui.label(nom_tooltip);
-                    })
-                    .clicked()
-                {
+                    });
+                } else {
+                    nom_btn = nom_btn.on_disabled_hover_text("Values are already nominal");
+                }
+
+                if nom_btn.clicked() {
                     self.apply_preset(false);
                     self.last_nominal_apply_time = Some(Instant::now());
                     ui.ctx().request_repaint_after(Duration::from_secs(1));
@@ -1184,13 +1217,19 @@ impl eframe::App for AstroMonitorApp {
                     )
                 };
 
-                if ui
-                    .add_sized([120.0, 0.0], egui::Button::new(alert_text))
-                    .on_hover_ui(|ui| {
+                let mut alert_btn = ui.add_enabled_ui(!is_alert, |ui| {
+                    ui.add_sized([120.0, 0.0], egui::Button::new(alert_text))
+                }).inner;
+
+                if !is_alert {
+                    alert_btn = alert_btn.on_hover_ui(|ui| {
                         ui.label(alert_tooltip);
-                    })
-                    .clicked()
-                {
+                    });
+                } else {
+                    alert_btn = alert_btn.on_disabled_hover_text("Values are already set to trigger an alert");
+                }
+
+                if alert_btn.clicked() {
                     self.apply_preset(true);
                     self.last_alert_apply_time = Some(Instant::now());
                     ui.ctx().request_repaint_after(Duration::from_secs(1));
