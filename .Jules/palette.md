@@ -8,3 +8,6 @@
 ## 2024-06-20 - Use Custom Cursors for Help Buttons in egui
 **Learning:** In `egui`, standard buttons (`egui::Button`) use the default pointer cursor on hover. When a button's primary action is to display an informational tooltip (like a `?` icon) rather than trigger a functional state change, relying solely on the hover text isn't enough semantic feedback.
 **Action:** Chain `.on_hover_cursor(egui::CursorIcon::Help)` immediately after creating the button element (and before `.on_hover_ui`) to explicitly change the cursor to a question mark icon, making the interface more intuitive.
+## 2024-05-24 - Reset Button for Logarithmic Sliders
+**Learning:** Users can easily lose track of the default value (e.g., simulation speed) after tweaking a logarithmic slider. Providing an inline, contextual 'reset' button next to the slider creates a quick escape hatch without requiring them to manually find the exact default value on a sensitive log scale.
+**Action:** Append a conditionally-enabled reset button (↺) to sensitive sliders, wrapping it in `add_enabled_ui` to preserve layout and provide state-specific tooltips.
