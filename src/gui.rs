@@ -604,6 +604,28 @@ impl eframe::App for AstroMonitorApp {
                     );
                 }
 
+                // Palette UX Enhancement: Reset Speed Button
+                let mut reset_btn = ui.add_enabled_ui(self.simulation_delay_ms != 1000, |ui| {
+                    ui.add_sized([24.0, 0.0], egui::Button::new("↺"))
+                }).inner;
+
+                if self.simulation_delay_ms != 1000 {
+                    reset_btn = reset_btn.on_hover_text("Reset speed to default (1.0 Hz)");
+                } else {
+                    reset_btn = reset_btn.on_disabled_hover_text("Speed is already at default (1.0 Hz)");
+                }
+
+                if reset_btn.clicked() {
+                    self.simulation_delay_ms = 1000;
+                    Self::format_progress_text(
+                        &mut self.progress_text,
+                        self.packet_index,
+                        self.packets.len(),
+                        self.simulation_delay_ms,
+                        self.paused,
+                    );
+                }
+
                 let progress = self.packet_index as f32 / self.packets.len() as f32;
                 // Bolt Optimization: Use cached progress text to avoid formatting/allocation every frame
 
