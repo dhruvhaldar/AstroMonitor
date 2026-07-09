@@ -230,6 +230,9 @@ pub struct AstroMonitorApp {
 
     cached_alert_counts: [usize; 3],
     cached_alert_counts_text: [String; 3],
+
+    // Bolt Optimization: Cache to prevent string evaluation per frame
+    cached_is_malicious_target: bool,
 }
 
 impl Default for AstroMonitorApp {
@@ -314,6 +317,8 @@ impl Default for AstroMonitorApp {
             input_dec: 0.0,
             input_confidence: 1.0,
             input_target: "Unknown".to_string(),
+
+            cached_is_malicious_target: false,
         }
     }
 }
@@ -1430,12 +1435,17 @@ impl eframe::App for AstroMonitorApp {
                                 });
                         }
                         ui.label("Target:");
-                        ui.add(
+                        let target_response = ui.add(
                             egui::TextEdit::singleline(&mut self.input_target)
                                 .hint_text("e.g. Sirius")
                                 .char_limit(255),
                         )
                         .on_hover_text("Target ID (max 255 bytes)");
+
+                        // Bolt Optimization: Cache the security string evaluation to avoid per-frame CPU hit
+                        if target_response.changed() {
+                            self.cached_is_malicious_target = is_malicious_csv_payload(&self.input_target);
+                        }
 
                         // Palette UX Enhancement: Clear Target Button
                         let mut clear_btn = ui.add_enabled_ui(!self.input_target.is_empty(), |ui| {
@@ -1450,6 +1460,7 @@ impl eframe::App for AstroMonitorApp {
 
                         if clear_btn.clicked() {
                             self.input_target.clear();
+                            self.cached_is_malicious_target = false;
                         }
 
                         // Palette UX Enhancement: Byte Counter
@@ -1484,7 +1495,7 @@ impl eframe::App for AstroMonitorApp {
                             });
 
                         // Palette UX Enhancement: Inline Security Warning
-                        if is_malicious_csv_payload(&self.input_target) {
+                        if self.cached_is_malicious_target {
                             let warn_color = Self::get_alert_color(&AlertLevel::Warning, ui.visuals().dark_mode);
                             ui.add(egui::Label::new(egui::RichText::new("⚠️").color(warn_color)).sense(egui::Sense::hover()))
                                 .on_hover_cursor(egui::CursorIcon::Help)
@@ -2103,6 +2114,7 @@ impl AstroMonitorApp {
                     self.input_dec = 0.0;
                     self.input_confidence = 1.0;
                     self.input_target = "Sirius".to_string();
+                    self.cached_is_malicious_target = false;
                 }
             }
         }
