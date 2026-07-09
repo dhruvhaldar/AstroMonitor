@@ -21,3 +21,6 @@
 ## 2025-06-25 - Replace `is_finite` + `contains` with simple boolean bound checks
 **Learning:** Checking ranges for floating point numbers using `!val.is_finite() || !(MIN..=MAX).contains(&val)` is slightly slower due to the overhead of trait method calls and bounds checks. A direct simple negated range check like `!(val >= MIN && val <= MAX)` naturally evaluates to `true` (triggering an alert) for NaNs and out of bounds values because any comparison with `NaN` evaluates to `false`.
 **Action:** Replace `is_finite` + `contains` bounds checks with combined direct `!(val >= MIN && val <= MAX)` expressions.
+## 2025-10-25 - Avoid per-frame string evaluations in immediate-mode rendering loops
+**Learning:** In immediate-mode GUIs like `egui`, evaluating complex string functions (like security checks) every frame creates unnecessary CPU overhead. Text fields rarely change compared to the 60+ Hz render loop.
+**Action:** Store a boolean cache flag in the application state and only recalculate it when the widget's `.changed()` response is true.
