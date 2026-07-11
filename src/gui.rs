@@ -1560,6 +1560,7 @@ impl eframe::App for AstroMonitorApp {
                     None,
                     Instant::now(),
                 );
+                Self::add_log_message(&mut self.logs, format_args!("SECURITY AUDIT: Manual telemetry packet injected by operator"));
                 self.logs_mutation_counter = self.logs_mutation_counter.wrapping_add(1);
                 self.last_injection_time = Some(Instant::now());
                 ui.ctx().request_repaint_after(Duration::from_secs(2));
